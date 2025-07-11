@@ -13,7 +13,7 @@ date: 2025-07-11
 <p align="center">
   <img src="/assets/120725/photo-3.jpg" width="300">
 </p>
-<p style="text-align: center;">Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</p>
+<div style="text-align: center;">Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</div>
 
 <div style="text-align: justify;">
   As this was my first time working with STM32, therefore the first time I am using STM32CubeIDE was quite a learning curve as it was not as intuitive as other IDE including Arduino IDE. But once Assoc. Prof. Dr. Tee Kian Sek explained the general process of setting up and download the code into the STM32 Blue Pill, I now realized it was same step as how I did in Arduino, just I could have more control of the process.
@@ -24,7 +24,7 @@ date: 2025-07-11
 <p align="center">
   <img src="/assets/120725/photo-4.jpg" width="300">
 </p>
-<p style="text-align: center;">Final setup of GIF animation using infamous "rickroll test".</p>
+<div style="text-align: center;">Final setup of GIF animation using infamous "rickroll test".</div>
 
 <div style="text-align: justify;">
   In short, this workshop had lead me into the new dimension of the embedded system division where STM32 could provide better controls over the hardwares but at the cost of increasing difficulty and learning curve compared to Arduino, ESP32 and Rasberry Pi Pico, which some could use embedded-C and others could use MicroPython. Once again, thanks to Assoc. Prof. Dr. Tee Kian Sek and other lecturers enrolled in the same workshop. 
@@ -33,10 +33,10 @@ date: 2025-07-11
 <p align="center">
   <img src="/assets/120725/photo-2.jpg" width="300">
 </p>
-<p style="text-align: center;">Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</p>
+<div style="text-align: center;">Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</div>
 
 <p align="center">
   <img src="/assets/120725/photo-1.jpg" width="300">
 </p>
-<p style="text-align: center;">Poster for promotion and enrollment of workshop.</p>
+<div style="text-align: center;">Poster for promotion and enrollment of workshop.</div>
   
