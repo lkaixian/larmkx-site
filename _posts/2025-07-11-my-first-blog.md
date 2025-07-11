@@ -11,7 +11,7 @@ date: 2025-07-11
 </div>
 
 <p align="center">
-  <img src="/assets/120725/photo-3.jpg" width="300">
+  <img src="/assets/120725/photo-3.jpg" width="600">
 </p>
 <div style="text-align: center;">Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</div>
 
@@ -31,12 +31,12 @@ date: 2025-07-11
 </div>
 
 <p align="center">
-  <img src="/assets/120725/photo-2.jpg" width="300">
+  <img src="/assets/120725/photo-2.jpg" width="600">
 </p>
 <div style="text-align: center;">Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</div>
 
 <p align="center">
-  <img src="/assets/120725/photo-1.jpg" width="300">
+  <img src="/assets/120725/photo-1.jpg" width="500">
 </p>
 <div style="text-align: center;">Poster for promotion and enrollment of workshop.</div>
   
