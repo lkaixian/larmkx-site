@@ -1,0 +1,8 @@
+title: larmkx.com
+description: My personal site and blog
+baseurl: ""
+url: "https://larmkx.com"
+theme: minima
+
+markdown: kramdown
+future: true
