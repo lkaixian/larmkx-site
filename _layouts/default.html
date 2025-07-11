@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ page.title }}</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page.title }} | LarmKX's Land</title>
+  <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
   <header>
@@ -23,5 +23,19 @@
   <footer>
     <p>&copy; 2025 larmkx.com</p>
   </footer>
+
+  <!-- Scroll-to-top button -->
+  <button id="scrollTopBtn" title="Go to top">↑ Top</button>
+
+  <script>
+    const scrollTopBtn = document.getElementById("scrollTopBtn");
+    window.onscroll = function () {
+      scrollTopBtn.style.display =
+        document.documentElement.scrollTop > 100 ? "block" : "none";
+    };
+    scrollTopBtn.onclick = function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+  </script>
 </body>
 </html>
