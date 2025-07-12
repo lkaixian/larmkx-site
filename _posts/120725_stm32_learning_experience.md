@@ -11,7 +11,7 @@ date: 2025-07-11
 </div>
 
 ![photo-3](/assets/120725/photo-3.jpg)
-*Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32*
+<p allign="center"><em>Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</em></p>
 
 
 <div style="text-align: justify;">
@@ -22,7 +22,7 @@ date: 2025-07-11
 </div>
 
 ![photo-4](/assets/120725/photo-4.jpg)
-*Final setup of GIF animation using infamous "rickroll test".*
+<p allign="center"><em>Final setup of GIF animation using infamous "rickroll test".</em></p>
 
 
 <div style="text-align: justify;">
@@ -30,9 +30,9 @@ date: 2025-07-11
 </div>
 
 ![photo-2](/assets/120725/photo-2.jpg)
-*Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.*
+<p allign="center"><em>Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</em></p>
 
 
 ![photo-1](/assets/120725/photo-1.jpg)
-*Poster for promotion and enrollment of workshop.*
+<p allign="center"><em>Poster for promotion and enrollment of workshop.</em></p>
 
