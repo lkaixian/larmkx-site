@@ -9,12 +9,10 @@ Quirky, but also love to discuss and discover more about astronomy, and coding!
 This site is where I document what I build and learn.
 
 ## Connection ⛓️
-<div style ="text-align: center; margin-top: 2rem;">
-<div class="badge-base LI-profile-badge" data-locale="en_US" data-size="medium" data-theme="dark" data-type="HORIZONTAL" data-vanity="larmkaixian" data-version="v1"><a class="badge-base__link LI-simple-link" href="https://my.linkedin.com/in/larmkaixian?trk=profile-badge">Larm Kai Xian</a></div>
-</div>
-              
 <div style="margin-top: 1rem; text-align: center;">
-  <a href="https://github.com/lkaixian target="_blank" style="margin: 0 0.5rem;">
+  <div class="badge-base LI-profile-badge" data-locale="en_US" data-size="medium" data-theme="dark" data-type="HORIZONTAL" data-vanity="larmkaixian" data-version="v1"><a class="badge-base__link LI-simple-link" href="https://my.linkedin.com/in/larmkaixian?trk=profile-badge">Larm Kai Xian</a></div>
+  
+  <a href="https://github.com/lkaixian" target="_blank" style="margin: 0 0.5rem;">
     <img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white&style=for-the-badge" alt="GitHub" />
   </a>
 
