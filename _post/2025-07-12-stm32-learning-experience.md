@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "First Learning Experience of STM32 Microcontroller"
-date: 2025-07-11
+date: 2025-07-12
 ---
 
 <div style="text-align: justify;">
@@ -11,7 +11,7 @@ date: 2025-07-11
 </div>
 
 ![photo-3](/assets/120725/photo-3.jpg)
-<p allign="center"><em>Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</em></p>
+<p align="center"><em>Assoc. Prof. Dr Tee Kian Sek providing lecturing session on STM32.</em></p>
 
 
 <div style="text-align: justify;">
@@ -22,7 +22,7 @@ date: 2025-07-11
 </div>
 
 ![photo-4](/assets/120725/photo-4.jpg)
-<p allign="center"><em>Final setup of GIF animation using infamous "rickroll test".</em></p>
+<p align="center"><em>Final setup of GIF animation using infamous "rickroll test".</em></p>
 
 
 <div style="text-align: justify;">
@@ -30,9 +30,9 @@ date: 2025-07-11
 </div>
 
 ![photo-2](/assets/120725/photo-2.jpg)
-<p allign="center"><em>Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</em></p>
+<p align="center"><em>Group photo with lecturers and Assoc. Prof. Dr. Tee Kian Sek.</em></p>
 
 
 ![photo-1](/assets/120725/photo-1.jpg)
-<p allign="center"><em>Poster for promotion and enrollment of workshop.</em></p>
+<p align="center"><em>Poster for promotion and enrollment of workshop.</em></p>
 
