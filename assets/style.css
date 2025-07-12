@@ -18,7 +18,7 @@ a {
   text-decoration: none;
 }
 
-header, footer {
+footer {
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -34,6 +34,43 @@ main {
   background-color: #1e1e1e;
   border-radius: 8px;
   box-shadow: 0 0 10px #000;
+}
+
+header {
+  background-color: #1f1f1f;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #333;
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.logo:hover img {
+  transform: scale(1.05);
+}
+
+.nav-links a {
+  margin-left: 1.5rem;
+  color: #ddd;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: #66ccff;
 }
 
 #scrollTopBtn {
