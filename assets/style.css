@@ -23,6 +23,19 @@ header, footer {
   margin-bottom: 2rem;
 }
 
+a:hover {
+  text-decoration: underline;
+}
+
+main {
+  max-width: 800px;
+  margin: auto;
+  padding: 2rem;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #000;
+}
+
 #scrollTopBtn {
   display: none;
   position: fixed;
