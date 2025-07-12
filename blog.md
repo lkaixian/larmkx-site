@@ -4,6 +4,7 @@ title: Blog
 ---
 
 # 📝 Blog Posts
+*Record the learning process*
 
 <ul>
   {% for post in site.posts %}
