@@ -10,7 +10,8 @@ This site showcases my DIY projects, blog posts, and journey as I learn.
 
 ---
 ## 🌠 Featured
-Not yet :<
+### [Invoice Manager and Uploader App](projects/invoice_scanner/invoice-scanner.md)
+Where you could upload invoice to the cloud with auto naming based on category chose and date chose
 
 ---
 ## Latest Blog Posts
