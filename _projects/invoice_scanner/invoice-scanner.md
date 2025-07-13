@@ -24,14 +24,62 @@ As this is my first time working with flutter and dart, I personally don't know 
 One of the major roadblocks I encounter is how do I exactly use the API to be able build communication between the app itself and the google's apps I need to use. Seriously, this is the first time I also work with cloud computing and at first glance, it looks confusing as there are alot of choices and selections for me to choose. I had no idea which should I choose but it took me a while to get to the tab or section I would need to. 
 
 
-![photo-2.png])(projects/invoice_scanner/photo-2.png)
+![photo-2.png](projects/invoice_scanner/photo-2.png)
 <p align=center><em>*Ah... Finally. These are the ones I am looking for :D.</em></p>
 
 
 Once i get further than enabling the API required (including Google Drive and Google Sheets), the next step is adding OAuth2.0 Client, which ironically enough, I don't read the manuals provided by Google, and took me some times to realise I need to key in the commands prior to the command provided on-screen. And finally, not done yet. I would need to enter the emails for testing purpose only as this is not a verified app by Google.
 
-The next major roadblock I encounter is the longway of debugging and long hours of frustrations to implement the features. Funnily enough, these lines of codes
-<pre><code>```dart showDialog( context: context, barrierDismissible: false, builder: (_) => WillPopScope( onWillPop: () async => false, child: const AlertDialog( content: Row( children: [ CircularProgressIndicator(), SizedBox(width: 16), Expanded(child: Text("Uploading and updating sheet...")), ], ), ), ), ); ```</code></pre> took me a while to implement, which is just freeze the entire screen and inform the user the uploading process is ongoing, and prevent further click of "Upload Receipt" button, which will upload more than 1 same file.
+The next major roadblock I encounter is the longway of debugging and long hours of frustrations to implement the features. Funnily enough, these lines of codes:\
+```
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => WillPopScope(
+      onWillPop: () async => false,
+      child: const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(child: Text("Uploading and updating sheet...")),
+          ],
+        ),
+      ),
+    ),
+  );
+  ```
+took me a while to implement, which is just freeze the entire screen and inform the user the uploading process is ongoing, and prevent further click of "Upload Receipt" button, which will upload more than 1 same file.
 Same as the process of uploading the file to the google drive, with the help of AI tools, then I could pull this feature off, or else it would took months to implement this, with the process of extract metadata from the file:
-<pre><code>```dart final boundary = '----flutter_upload_boundary'; final body = <int>[]; // Part 1: Metadata (JSON) body.addAll(utf8.encode('--$boundary\r\n')); body.addAll(utf8.encode('Content-Type: application/json; charset=UTF-8\r\n\r\n')); body.addAll(utf8.encode(jsonEncode(metadata))); body.addAll(utf8.encode('\r\n')); // Part 2: Binary File Data body.addAll(utf8.encode('--$boundary\r\n')); body.addAll(utf8.encode('Content-Type: $mimeType\r\n\r\n')); body.addAll(fileBytes); body.addAll(utf8.encode('\r\n--$boundary--\r\n')); ```</code></pre> *To be honest, without AI, I wouldn't even know this is the way to extract metadata and upload to google drive, get good kids*
+```
+    final metadata = {
+      'name': fileName,
+      'parents': [folderId],
+    };
+
+    final boundary = '----flutter_upload_boundary';
+    final body = <int>[];
+
+    // Part 1: Metadata (JSON)
+    body.addAll(utf8.encode('--$boundary\r\n'));
+    body.addAll(utf8.encode('Content-Type: application/json; charset=UTF-8\r\n\r\n'));
+    body.addAll(utf8.encode(jsonEncode(metadata)));
+    body.addAll(utf8.encode('\r\n'));
+
+    // Part 2: Binary File Data
+    body.addAll(utf8.encode('--$boundary\r\n'));
+    body.addAll(utf8.encode('Content-Type: $mimeType\r\n\r\n'));
+    body.addAll(fileBytes);
+    body.addAll(utf8.encode('\r\n--$boundary--\r\n'));
+
+    final uploadRes = await http.post(
+      uri,
+      headers: {
+        HttpHeaders.authorizationHeader: "Bearer $token",
+        "Content-Type": "multipart/related; boundary=$boundary",
+      },
+      body: Uint8List.fromList(body),
+    );
+```
+*To be honest, without AI, I wouldn't even know this is the way to extract metadata and upload to google drive, get good kids*
 
