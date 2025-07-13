@@ -88,13 +88,15 @@ Same as the process of uploading the file to the google drive, with the help of 
 It took me few weeks to finally bring it all together, not only I could take photo directly from the app, select the category I want, choose the date, enter the amount and click upload, voila! It upload to the folder created by their own and append the values into spreadsheet where I could view in app as well! (Albeit it only display the last upload of the category, non-selectable unfortunately.)
 
 ![photo-3.jpg](/assets/invoice-scanner/photo-3.jpg)
-<p align=center><em>Sample of setting up the receipt I would like to upload.</em>
+<p align=center><em>Sample of setting up the receipt I would like to upload.</em></p>
+
 
 ![photo-4.png](/assets/invoice-scanner/photo-4.png)
-<p align=center><em>It create a new folder named as the category i chose, and add inside the file.</em>
+<p align=center><em>It create a new folder named as the category i chose, and add inside the file.</em></p>
+
 
 ![photo-5.jpg](/assets/invoice-scanner/photo-5.jpg)
-<p align=center><em>It also append the basic values in the correspond category inside the spreadsheet created by their own.</em>
+<p align=center><em>It also append the basic values in the correspond category inside the spreadsheet created by their own.</em></p>
 
 
 # Conclusion
