@@ -4,5 +4,10 @@ baseurl: ""
 url: "https://larmkx.com"
 theme: minima
 
+collections:
+  projects:
+    output: true
+    permalink: /projects/:name/
+
 markdown: kramdown
 future: true
