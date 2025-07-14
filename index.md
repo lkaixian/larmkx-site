@@ -7,6 +7,8 @@ title: Home
 
 Hi! I'm an electronics engineering student.  
 This site showcases my DIY projects, blog posts, and journey as I learn.
+
+
 *The journey of zero become hero.*
 ---
 ## 🌠 Featured (As of: Jul 2025)
