@@ -110,15 +110,15 @@ Update: 1.1
 *My dad: Why there isn't an option for me to change the language to chinese?*
 *Me: Okay, here you go.*
 
-![photo-6.jpg](/assets/invoice-scanner/photo-5.jpg)
+![photo-6.jpg](/assets/invoice-scanner/photo-6.jpg)
 <p align=center><em>Ey, we got a language selection now! (Official repo only support 3 of them.)</em></p>
 
 
-![photo-7.jpg](/assets/invoice-scanner/photo-5.jpg)
+![photo-7.jpg](/assets/invoice-scanner/photo-7.jpg)
 <p align=center><em>The "Receipt Uploader" UI layout but in Bahasa Malaysia language.</em></p>
 
 
-![photo-8.jpg](/assets/invoice-scanner/photo-5.jpg)
+![photo-8.jpg](/assets/invoice-scanner/photo-8.jpg)
 <p align=center><em>The "Receipt Uploader" UI layout but in Simplified Chinese language.</em></p>
 
 *Note: Others could add their own language by creating new ```.arb```, modify the ```.yaml``` file to add new language code, and add selection of the language code in ```main.dart``` file*
