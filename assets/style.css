@@ -136,7 +136,8 @@ img {
 </style>
 
 pre {
-  background: #f5f5f5;
+  background: #1e1e1e;
+  color: #eee;
   padding: 1em;
   overflow-x: auto;
   border-radius: 8px;
@@ -144,13 +145,27 @@ pre {
   line-height: 1.4;
   max-width: 100%;
   box-sizing: border-box;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  white-space: pre;
 }
 
 pre::-webkit-scrollbar {
   height: 6px;
 }
 pre::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: #444;
   border-radius: 3px;
 }
+
+code {
+  background-color: #1e1e1e;
+  color: #eee;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+  padding: 0.75rem;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
 
