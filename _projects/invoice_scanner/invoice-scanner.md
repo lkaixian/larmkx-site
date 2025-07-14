@@ -30,7 +30,7 @@ One of the major roadblocks I encounter is how do I exactly use the API to be ab
 
 Once i get further than enabling the API required (including Google Drive and Google Sheets), the next step is adding OAuth2.0 Client, which ironically enough, I don't read the manuals provided by Google, and took me some times to realise I need to key in the commands prior to the command provided on-screen. And finally, not done yet. I would need to enter the emails for testing purpose only as this is not a verified app by Google.
 
-The next major roadblock I encounter is the longway of debugging and long hours of frustrations to implement the features. Funnily enough, these lines of codes:\
+The next major roadblock I encounter is the longway of debugging and long hours of frustrations to implement the features. Funnily enough, these lines of codes:
 ```
   showDialog(
     context: context,
@@ -104,3 +104,21 @@ In short, it literally solve the problem of where I previously need to do all th
 
 #[Fork my work?](https://github.com/lkaixian/invoice-uploader)
 *Note: I hardly update the work I done, it done its own job great, perhaps an update will drop only if I need such feature and share it to you guys, via the repo of course.*
+
+---
+Update: 1.1
+*My dad: Why there isn't an option for me to change the language to chinese?*
+*Me: Okay, here you go.*
+
+![photo-6.jpg](/assets/invoice-scanner/photo-5.jpg)
+<p align=center><em>Ey, we got a language selection now! (Official repo only support 3 of them.)</em></p>
+
+
+![photo-7.jpg](/assets/invoice-scanner/photo-5.jpg)
+<p align=center><em>The "Receipt Uploader" UI layout but in Bahasa Malaysia language.</em></p>
+
+
+![photo-8.jpg](/assets/invoice-scanner/photo-5.jpg)
+<p align=center><em>The "Receipt Uploader" UI layout but in Simplified Chinese language.</em></p>
+
+*Note: Others could add their own language by creating new ```.arb```, modify the ```.yaml``` file to add new language code, and add selection of the language code in ```main.dart``` file*
