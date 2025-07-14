@@ -7,13 +7,15 @@ title: Home
 
 Hi! I'm an electronics engineering student.  
 This site showcases my DIY projects, blog posts, and journey as I learn.
-
+*The journey of zero become hero.*
 ---
-## 🌠 Featured
+## 🌠 Featured (As of: Jul 2025)
 ### [Invoice Manager and Uploader App](/projects/invoice-scanner/)
-Where you could upload invoice to the cloud with auto naming based on category chose and date chose
+Where you could upload invoice to the cloud with auto naming based on category chose and date chose.
+
+
 **Date:** July 2025
-### [View Project ➜](/projects/invoice-scanner/)
+[View Project ➜](/projects/invoice-scanner/)
 
 
 ---
