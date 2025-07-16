@@ -31,7 +31,7 @@ One of the major roadblocks I encounter is how do I exactly use the API to be ab
 Once i get further than enabling the API required (including Google Drive and Google Sheets), the next step is adding OAuth2.0 Client, which ironically enough, I don't read the manuals provided by Google, and took me some times to realise I need to key in the commands prior to the command provided on-screen. And finally, not done yet. I would need to enter the emails for testing purpose only as this is not a verified app by Google.
 
 The next major roadblock I encounter is the longway of debugging and long hours of frustrations to implement the features. Funnily enough, these lines of codes:
-```
+<pre>```dart
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -48,10 +48,10 @@ The next major roadblock I encounter is the longway of debugging and long hours 
       ),
     ),
   );
-  ```
+  ```</pre>
 took me a while to implement, which is just freeze the entire screen and inform the user the uploading process is ongoing, and prevent further click of "Upload Receipt" button, which will upload more than 1 same file.
 Same as the process of uploading the file to the google drive, with the help of AI tools, then I could pull this feature off, or else it would took months to implement this, with the process of extract metadata from the file:
-```
+<pre>```dart
     final metadata = {
       'name': fileName,
       'parents': [folderId],
@@ -80,7 +80,7 @@ Same as the process of uploading the file to the google drive, with the help of 
       },
       body: Uint8List.fromList(body),
     );
-```
+```</pre>
 *To be honest, without AI, I wouldn't even know this is the way to extract metadata and upload to google drive, get good kids*
 
 # The homerun
