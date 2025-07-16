@@ -9,6 +9,6 @@ collections:
     output: true
     permalink: /projects/:name/
 
-markdown: redcarpet
+markdown: kramdown
 future: true
-highlighter: none
+highlighter: rouge
