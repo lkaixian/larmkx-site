@@ -178,3 +178,10 @@ code.hljs {
   max-width: 100%;
   overflow-x: hidden;
 }
+
+.language-python code {
+  font-family: 'Fira Code', monospace;
+  white-space: pre;
+  overflow-x: auto;
+}
+
