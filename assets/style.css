@@ -159,6 +159,10 @@ pre::-webkit-scrollbar-thumb {
   border-radius: 3px;
 }
 
+.highlight span {
+  line-height: inherit;
+}
+
 code {
   background-color: #1e1e1e;
   color: #eee;
@@ -175,10 +179,10 @@ code {
   padding: 0.2em 0.4em;
 }
 
-
 pre code {
-  display: inline; 
-  padding: 0;       
+  display: block; 
+  padding: 0; 
+  white-space: pre;
 }
 
 
