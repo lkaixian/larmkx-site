@@ -135,21 +135,6 @@ img {
 }
 </style>
 
-pre {
-  background: #1e1e1e;
-  color: #eee;
-  padding: 1em;
-  overflow-x: auto;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  white-space: pre;
-  margin: 1em 0;
-}
-
 /* Scrollbar */
 pre::-webkit-scrollbar {
   height: 6px;
@@ -159,30 +144,24 @@ pre::-webkit-scrollbar-thumb {
   border-radius: 3px;
 }
 
-.highlight span {
-  line-height: inherit;
-}
-
-code {
-  background-color: #1e1e1e;
-  color: #eee;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  padding: 0.2em 0.4em;
-  white-space: pre-wrap;
-}
-
 /* Only affect inline code inside non-pre blocks */
 :not(pre) > code {
   display: inline;
   padding: 0.2em 0.4em;
 }
 
-pre code {
-  display: block; 
-  padding: 0; 
-  white-space: pre;
+pre code.hljs {
+  padding: 1em;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  display: block;
+  overflow-x: auto;
+  background-color: #1e1e1e; /* If you're overriding */
+  color: #eee;
 }
 
+code.hljs {
+  font-family: 'Fira Code', monospace;
+}
 
