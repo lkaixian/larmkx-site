@@ -4,13 +4,13 @@ title: "D* (Star) lite algorithm Implementation Using Python"
 date: 2025-07-16
 ---
 
-![dstarlite-process.gif]()
+![dstarlite-process.gif](/assets/dstarlite/dstarlite-process.gif)
 <p align="center"><em>D* Lite in action at 20x20 grid</em></p>
 
 ## Introduction
 D* (star) Lite Pathfinding algorithm, or any path finding algorithm in short, is a procedure used to find the optimal path between two points in a given environment. It could be the way to find the shortest path between this road to that road, or the path that shown in the Google Map between a location to a location.
 
-![example.jpg]()
+![example.jpg](/assets/dstarlite/example.jpg)
 <p align="center"><em>Shortest Path from McDonald's Parit Raja to UTHM.</em></p>
 
 There are numerous well-known path finding algorithm, which includes [A* algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm), [Dijkstra's algorithm](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm), and also the [D* algorithm](https://en.wikipedia.org/wiki/D*). I believe there are numerous websites who do the explanation of each algorithm, but in short, each algorithm serves it's own purpose.
@@ -299,13 +299,13 @@ The plotting only get triggered once we close the pygame window, indicating we a
 
 ## Result and Issues
 
-![result.gif]()
+![result.gif](/assets/dstarlite/result.gif)
 <p align="center"><em>The gif animation of one of the simulations.</em></p>
 
-![result-graph.png]()
+![result-graph.png](/assets/dstarlite/result-graph.png)
 <p align="center"><em>The result of the graph for grid size of 50*50, up to 900 obstacles placed.</em></p>
 
-![result-grid.png]()
+![result-grid.png](/assets/dstarlite/result-grid.png)
 <p align="center"><em>The grid used for the simulation for grid size of 50x50 during 900th obstacle. </em></p>
 
 Text Log:
@@ -326,21 +326,21 @@ Recalculated in 18.58 ms, Obstacles: 738, Path Length: 99
 Recalculated in 36.93 ms, Obstacles: 739, Path Length: 103
 ```
 
-![first-observation.png]()
+![first-observation.png](/assets/dstarlite/first-obs.png)
 <p align="center"><em>First observation with using arrow as the overall trend.</em></p>
 
 > Conclusion: If the number of shortest path remain the same even increases in number of obstacle, the calculation time will eventually decrease as less space search required. Therefore, it causing a decrease trend of recalculation time.
 
 ***Second observation***:
 
-![second-observation.png]()
+![second-observation.png](/assets/dstarlite/second-obs.png)
 <p align="center"><em>Second observation with high outliers at same number of cells to reach shortest path.</em></p>
 
 > Conclusion: The spike generated at a decreasing trend indicating the current shortest path was obstructed by new obstacle, and required more indexing to recalculate the path, although it still remain the same path length, but it can be different path.
 
 ***Third observation***:
 
-![third-observation.png]()
+![third-observation.png](/assets/dstarlite/third-obs.png)
 <p align="center"><em>Third observation with opposite trend between 2 graphs.</em></p>
 
 > Conclusion 1: As there is changes of the shortest path length, a new overall recalculation is needed, therefore it spikes up from around 20ms to near 40ms, but the changes is insignifant as there is less search area at placement of 739th obstacle.
@@ -355,7 +355,7 @@ Recalculated in 750.94 ms, Obstacles: 39, Path Length: 399
 ```
 Which without the GUI, we use randomisation of obstacle placement at same grid size with probability of 30% being obstacle for each cell, which it took 237ms to complete it, here is the result:
 
-![dstarlite-200x200.png]()
+![dstarlite-200x200.png](/assets/dstarlite/dstar_path.png)
 <p align="center"><em>200x200 grid in 0.2s? COOL</em></p>
 
 ## Conclusion
