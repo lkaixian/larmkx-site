@@ -8,23 +8,23 @@ First of all, I'm truly grateful to have been selected for the opportunity to pa
 This marked my first in-depth exposure to the ARM architecture and its ecosystem. 
 
 🧠Day 1: Introduction of ARM Architecture & Profiles
-✨ARM (Advanced RISC Machine) licensing it's own ISA and CPU designs rather than making the chip.
-✨ARM's family consists of A-profile (Application profile), R-profile (Real-time profile), M-profile (Microcontroller profile) and Neoverse.
-✨ Biggest difference between ARMv8-a and ARMv9-a is ARMv8-a introduce 64-bit computation while ARMv9-a introduce enhancement of security and AI/ML capabilities.
-✨ big.LITTLE architecture consists of mix of big and little cores whereas  #DynamIQ architecture are more integrated, removal of L3 cache and replace with DynamIQ Shared Unit (DSU).
-✨ #AMBA Tree Protocol is ARM's Interconnect where it has numbers of protocols used for communication. Think of them like types of road and number of lanes.
+- ✨ARM (Advanced RISC Machine) licensing it's own ISA and CPU designs rather than making the chip.
+- ✨ARM's family consists of A-profile (Application profile), R-profile (Real-time profile), M-profile (Microcontroller profile) and Neoverse.
+- ✨ Biggest difference between ARMv8-a and ARMv9-a is ARMv8-a introduce 64-bit computation while ARMv9-a introduce enhancement of security and AI/ML capabilities.
+- ✨ big.LITTLE architecture consists of mix of big and little cores whereas  #DynamIQ architecture are more integrated, removal of L3 cache and replace with DynamIQ Shared Unit (DSU).
+- ✨ #AMBA Tree Protocol is ARM's Interconnect where it has numbers of protocols used for communication. Think of them like types of road and number of lanes.
 
 🧠Day 2: SoC Design & ARM System IP
-✨General SoC Design flow is as below:
+- ✨General SoC Design flow is as below:
 Architecture definition (requirements, PPA) → IP integration (RTL & EDA tools) → RTL design & verification (testbench, constraints) → Software co-development (drivers) → Backend Implementation (floor planning) → Tape-out → Validation → Mass production.
-✨The Core ARM SoC components consists of ARM CPUs, the memory subsystem, AMBA Interconnect, System IP, I/O, NPU, and PCM (Power & Clock management)
-✨Introduction of ARM  #Corstone SubSystems - prebuilt SoC templates. (Corstone-1000)
+- ✨The Core ARM SoC components consists of ARM CPUs, the memory subsystem, AMBA Interconnect, System IP, I/O, NPU, and PCM (Power & Clock management)
+- ✨Introduction of ARM  #Corstone SubSystems - prebuilt SoC templates. (Corstone-1000)
 
 🧠 Day 3: AI and ML with ARM
-✨ Introduction of ARM  #Ethos-U Series NPU - perform from basic CNN to Transformers by offloading NN ops from Cortex-M using ARM  #TOSA (Tensor Operator Set Architecture)
-✨Introduction of  #Vela compiler where it optimize TFLu (TensorflowLite micro) for NPU execution.
-✨ Optimization of LLM including Quantization, distillation, pruning, and using DAG (Dynamic Graph - TF 2) or Eager Mode (TF 1)
-✨ Optimization of Matrix including loop tiling, reordering, loop unrolling and multicore parallelism.
+- ✨ Introduction of ARM  #Ethos-U Series NPU - perform from basic CNN to Transformers by offloading NN ops from Cortex-M using ARM  #TOSA (Tensor Operator Set Architecture)
+- ✨Introduction of  #Vela compiler where it optimize TFLu (TensorflowLite micro) for NPU execution.
+- ✨ Optimization of LLM including Quantization, distillation, pruning, and using DAG (Dynamic Graph - TF 2) or Eager Mode (TF 1)
+- ✨ Optimization of Matrix including loop tiling, reordering, loop unrolling and multicore parallelism.
 
 There's still a lot more to cover and so far I had done summary for the 1st day. Special thanks to:
 - Blade Lin for detailed explanation (especially on differences between GIC and NVIC in terms of speed and ARM Kleidi framework on SLAM application) and advices.
@@ -33,8 +33,7 @@ There's still a lot more to cover and so far I had done summary for the 1st day.
 - CK Tseng for the thrilling opening speech🔥
 
 In short, this marked as the first step for the in-depth exploration of ARM's ecosystem. Hope you find this post insightful.
- #STEMEducation  #ASEM  #ARM  #ARMTraining  #Semiconductor  #Monash
- #ARMOnDemand
+ #STEMEducation  #ASEM  #ARM  #ARMTraining  #Semiconductor  #Monash   #ARMOnDemand
 
 ![armphotod1-1.jpg](/assets/armtrain/armphotod1-1.jpg)
 <p align="center"><em>My first visit to Monash University! Cool university with easy access to the public transport, and a Zus Coffee inside the campus? (And yes, sorry, I blocked one of the letter.)</em></p>
@@ -61,4 +60,5 @@ In short, this marked as the first step for the in-depth exploration of ARM's ec
 <p align="center"><em>The ordinary opening of Arm Developer Labs</em></p>
 
 ![armphotod3-3.jpg](/assets/armtrain/armphotod3-3.jpg)
+
 <p align="center"><em>I made it till the end of the event! </em></p>
