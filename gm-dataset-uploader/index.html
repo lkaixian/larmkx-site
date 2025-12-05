@@ -24,7 +24,7 @@
           ? __initial_auth_token
           : null;
 
-      // FIXED: Assigned your actual keys to the correct variable name (FIREBASE_CONFIG)
+      // YOUR CONFIGURATION IS PRESERVED HERE
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
         authDomain: "gm-dataset.firebaseapp.com",
@@ -120,10 +120,6 @@
       // 2. UTILITY FUNCTIONS
       // =========================================================
 
-      /**
-       * Formats category name, date, and time into a clean filename.
-       * Format: CategoryName_YYYYMMDD_HHMMSS
-       */
       function generateFileName(categoryName) {
         const now = new Date();
         const pad = (num) => num.toString().padStart(2, "0");
@@ -135,7 +131,6 @@
         const minute = pad(now.getMinutes());
         const second = pad(now.getSeconds());
 
-        // Sanitize category name: remove spaces/special characters
         const sanitizedCategoryName = categoryName
           .replace(/\s+/g, "")
           .replace(/[^a-zA-Z0-9]/g, "");
@@ -146,9 +141,6 @@
         return `${sanitizedCategoryName}_${datePart}_${timePart}`;
       }
 
-      /**
-       * Displays a notification with color-coded feedback.
-       */
       window.showNotification = function (message, type = "info") {
         const statusBox = document.getElementById("status-box");
         statusBox.textContent = message;
@@ -205,40 +197,25 @@
         document.getElementById("queue-count").textContent = count;
       }
 
-      /**
-       * Adds a new photo object to the local queue in localStorage.
-       */
       window.addToLocalQueue = function (photoData) {
         const queue = loadQueue();
-        // Assign a unique local ID for tracking and removal
         photoData.localId = Date.now() + "_" + Math.floor(Math.random() * 1000);
         photoData.status = "pending_local";
         queue.push(photoData);
         saveQueue(queue);
-
-        // Attempt upload immediately after saving locally
         processUploadQueue();
-
         window.showNotification(
           `Photo saved locally (${photoData.mlFileName}). Uploading soon...`,
           "warning"
         );
       };
 
-      /**
-       * Attempts to upload items from the local queue to Firestore sequentially.
-       * This function is the heart of the reliability mechanism.
-       */
       window.processUploadQueue = async function () {
-        // Must wait for Firebase auth to be ready
         if (!isAuthReady || !userId || !db) return;
 
         const queue = loadQueue();
-        if (queue.length === 0) {
-          return;
-        }
+        if (queue.length === 0) return;
 
-        // Process only the first item to enforce sequential uploads and prevent throttling
         const item = queue[0];
 
         try {
@@ -261,7 +238,6 @@
             appId: appId,
           });
 
-          // Success: Remove item from local queue
           const updatedQueue = queue.filter(
             (qItem) => qItem.localId !== item.localId
           );
@@ -272,12 +248,10 @@
             "success"
           );
 
-          // Process the next item immediately
           if (updatedQueue.length > 0) {
             processUploadQueue();
           }
         } catch (error) {
-          // Failure (Network error, etc.): Item remains in queue for retry by setInterval
           console.error(`Upload failed for ${item.mlFileName}:`, error.message);
           window.showNotification(
             `Upload failed for ${item.mlFileName}. Retrying in ${
@@ -294,10 +268,9 @@
 
       window.setupFirebase = async function () {
         try {
-          // Check checks the correct variable name now
           if (Object.keys(FIREBASE_CONFIG).length === 0) {
             window.showNotification(
-              "Error: Firebase config is missing. Please replace the placeholder.",
+              "Error: Firebase config is missing.",
               "error"
             );
             return;
@@ -316,18 +289,14 @@
               isAuthReady = true;
               startCamera();
               loadPhotos();
-              // Start the queue processing agent
               setInterval(processUploadQueue, UPLOAD_RETRY_INTERVAL);
-              processUploadQueue(); // Initial run
+              processUploadQueue();
             } else {
               userId = null;
               isAuthReady = true;
             }
           });
 
-          // Attempt authentication with fallback
-          // This handles the case where the environment token (initialAuthToken)
-          // doesn't match your custom project config.
           try {
             if (initialAuthToken) {
               await signInWithCustomToken(auth, initialAuthToken);
@@ -335,12 +304,7 @@
               await signInAnonymously(auth);
             }
           } catch (authError) {
-            console.warn(
-              "Initial auth failed (likely project mismatch), falling back to anonymous auth:",
-              authError
-            );
-            // Fallback to anonymous auth if custom token fails
-            // NOTE: "Anonymous" provider must be enabled in Firebase Console
+            console.warn("Initial auth failed, falling back:", authError);
             await signInAnonymously(auth);
           }
 
@@ -348,7 +312,7 @@
         } catch (error) {
           console.error("Error setting up Firebase:", error);
           window.showNotification(
-            `Firebase setup failed: ${error.message}. Ensure Anonymous Auth is enabled.`,
+            `Firebase setup failed: ${error.message}`,
             "error"
           );
         }
@@ -359,7 +323,6 @@
         CATEGORIES.forEach((cat) => {
           const option = document.createElement("option");
           option.value = cat.id;
-          // Display the name and the short tip for clarity
           option.textContent = `${cat.name} (${cat.shortTip})`;
           option.disabled = cat.requiresSelection || false;
           option.selected = cat.requiresSelection || false;
@@ -376,16 +339,23 @@
         }
 
         try {
-          window.showNotification("Requesting camera access...", "info");
-          // Request back-facing camera for field data collection
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
+          window.showNotification("Requesting HD camera access...", "info");
+          
+          // Request 720p - ideal for bounding box annotation
+          const constraints = {
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
           videoStream = stream;
           video.srcObject = stream;
           video.play();
           window.showNotification(
-            "Live feed ready. Select a category and capture.",
+            "Live feed ready (HD). Select a category and capture.",
             "success"
           );
           captureBtn.disabled = false;
@@ -399,20 +369,14 @@
         }
       }
 
-      /**
-       * Initiates the photo capture and shows the review modal.
-       */
       window.takePhoto = function () {
         const video = document.getElementById("video-stream");
         const canvas = document.getElementById("photo-canvas");
         const categorySelect = document.getElementById("category-select");
 
         const selectedCategoryId = categorySelect.value;
-        // Get the full text including the tip for display
         const selectedCategoryText =
           categorySelect.options[categorySelect.selectedIndex].textContent;
-
-        // Extract just the category name for filename generation
         const selectedCategoryName = selectedCategoryText.split("(")[0].trim();
 
         if (selectedCategoryId === "000") {
@@ -429,15 +393,15 @@
           return;
         }
 
-        // Capture the image data from the video frame
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
+        // Capture full resolution provided by camera
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        
         const ctx = canvas.getContext("2d");
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        capturedImageData = canvas.toDataURL("image/jpeg", 0.9); // Use 90% quality
+        capturedImageData = canvas.toDataURL("image/jpeg", 0.9);
 
-        // Prepare photo metadata for the review modal
         const fileName = generateFileName(selectedCategoryName);
 
         document.getElementById("review-img").src = capturedImageData;
@@ -448,18 +412,12 @@
         document.getElementById("review-modal").classList.remove("hidden");
       };
 
-      /**
-       * Dismisses the review modal and prepares for retake.
-       */
       window.retakePhoto = function () {
         document.getElementById("review-modal").classList.add("hidden");
         capturedImageData = null;
         window.showNotification("Review dismissed. Ready for retake.", "info");
       };
 
-      /**
-       * Confirms the image quality and adds the data to the local queue.
-       */
       window.uploadConfirmed = function () {
         if (!capturedImageData) {
           window.showNotification("No photo data to upload.", "error");
@@ -469,7 +427,6 @@
 
         const categorySelect = document.getElementById("category-select");
 
-        // Package the data for local storage
         const photoData = {
           timestamp: Date.now(),
           mlFileName: document.getElementById("review-filename").textContent,
@@ -479,16 +436,12 @@
           imageB64: capturedImageData,
         };
 
-        // Add to local storage immediately for persistence
         window.addToLocalQueue(photoData);
 
         capturedImageData = null;
         document.getElementById("review-modal").classList.add("hidden");
       };
 
-      /**
-       * Listens to Firestore for successful uploads and updates the Recent Uploads list.
-       */
       function loadPhotos() {
         if (!isAuthReady || !userId || !db) return;
 
@@ -505,7 +458,6 @@
               photos.push({ id: doc.id, ...doc.data() });
             });
 
-            // Sort in memory by timestamp descending (newest first)
             photos.sort((a, b) => b.timestamp - a.timestamp);
 
             photosList.innerHTML = "";
@@ -558,17 +510,12 @@
         );
       }
 
-      // =========================================================
-      // 5. INITIALIZATION
-      // =========================================================
-
       window.onload = function () {
         setupFirebase();
-        updateQueueCount(loadQueue().length); // Show queue count on load
+        updateQueueCount(loadQueue().length);
       };
     </script>
     <style>
-      /* Base styles for a dark, professional, mobile-friendly design */
       body {
         font-family: "Inter", sans-serif;
         background-color: #1a1a2e;
@@ -576,8 +523,10 @@
       }
       #video-stream {
         width: 100%;
-        height: 300px;
-        object-fit: cover;
+        /* FIXED: Removed fixed height so it respects aspect ratio */
+        height: auto; 
+        aspect-ratio: 16 / 9; /* Typical 720p/1080p aspect ratio */
+        object-fit: contain; /* Ensures full frame is visible, no cropping */
         background-color: #000;
       }
       #photo-canvas {
@@ -589,60 +538,49 @@
       .card {
         background: #272742;
       }
-
-      /* --- FIXED STYLES: Replaced @apply with standard CSS properties --- */
-
       .btn-primary {
-        /* Matches @apply bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg */
-        background-color: #4f46e5; /* indigo-600 */
+        background-color: #4f46e5;
         color: white;
         font-weight: bold;
         padding: 0.75rem 1.5rem;
         border-radius: 0.75rem;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
         transition: background-color 0.15s ease-in-out;
         font-size: 1rem;
       }
       .btn-primary:hover {
-        background-color: #4338ca; /* indigo-700 */
+        background-color: #4338ca;
       }
       .btn-primary:active {
-        background-color: #3730a3; /* indigo-800 */
+        background-color: #3730a3;
       }
-
       .btn-secondary {
-        /* Matches @apply bg-gray-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg */
-        background-color: #6b7280; /* gray-500 */
+        background-color: #6b7280;
         color: white;
         font-weight: bold;
         padding: 0.75rem 1.5rem;
         border-radius: 0.75rem;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
         transition: background-color 0.15s ease-in-out;
         font-size: 1rem;
       }
       .btn-secondary:hover {
-        background-color: #4b5563; /* gray-600 */
+        background-color: #4b5563;
       }
       .btn-secondary:active {
-        background-color: #374151; /* gray-700 */
+        background-color: #374151;
       }
-
       .select-input {
-        /* Matches @apply w-full p-3 mb-4 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-indigo-500 focus:border-indigo-500 */
         width: 100%;
         padding: 0.75rem;
         margin-bottom: 1rem;
         border-radius: 0.5rem;
-        background-color: #374151; /* gray-700 */
-        border: 1px solid #4b5563; /* border-gray-600 */
+        background-color: #374151;
+        border: 1px solid #4b5563;
         color: white;
       }
-      /* --- END FIXED STYLES --- */
-
-      /* Modal Overlay Styles (Full screen for clear review) */
       .modal-overlay {
         position: fixed;
         top: 0;
@@ -682,7 +620,6 @@
         ML Data Collector
       </h1>
 
-      <!-- Status & Notification Box -->
       <div
         id="status-box"
         class="text-center font-semibold p-3 rounded-xl mb-4 bg-gray-700 text-gray-300"
@@ -690,7 +627,6 @@
         Initializing app...
       </div>
 
-      <!-- User ID & Queue Count Display -->
       <div
         class="card p-4 rounded-xl mb-6 shadow-2xl flex justify-between items-center"
       >
@@ -705,11 +641,9 @@
         </p>
       </div>
 
-      <!-- Camera, Category & Capture Section -->
       <div id="capture-section" class="card p-4 rounded-xl mb-6 shadow-2xl">
         <h2 class="text-xl font-semibold mb-3">Capture Setup</h2>
 
-        <!-- Category Selection Dropdown -->
         <label
           for="category-select"
           class="block text-sm font-medium mb-1 text-gray-300"
@@ -719,17 +653,14 @@
 
         <h2 class="text-xl font-semibold mt-4 mb-3">Live Camera Feed</h2>
 
-        <!-- Video Stream Element -->
         <div
           class="w-full rounded-lg overflow-hidden border-4 border-indigo-500/50 mb-4 shadow-inner"
         >
           <video id="video-stream" autoplay playsinline muted></video>
         </div>
 
-        <!-- Hidden Canvas for Photo Conversion -->
         <canvas id="photo-canvas"></canvas>
 
-        <!-- Action Button - Large touch target -->
         <button
           id="capture-btn"
           onclick="takePhoto()"
@@ -760,7 +691,6 @@
         </button>
       </div>
 
-      <!-- Upload History Section (Cloud Data) -->
       <div class="card p-4 rounded-xl shadow-2xl">
         <h2 class="text-xl font-semibold mb-4 text-indigo-300">
           Recent Cloud Uploads
@@ -773,14 +703,12 @@
       </div>
     </div>
 
-    <!-- Photo Review Modal (Hidden by default, used for confirmation) -->
     <div id="review-modal" class="modal-overlay hidden">
       <div class="modal-content">
         <h3 class="text-2xl font-bold mb-3 text-indigo-300 text-center">
           Review Captured Photo
         </h3>
 
-        <!-- Image Preview - Large and clear for validation -->
         <img
           id="review-img"
           class="modal-image"
@@ -788,7 +716,6 @@
           alt="Captured Photo Preview"
         />
 
-        <!-- Metadata Confirmation -->
         <div class="mb-4 p-3 bg-gray-700 rounded-lg">
           <p class="text-sm text-gray-400">
             Category:
@@ -806,7 +733,6 @@
           </p>
         </div>
 
-        <!-- Action Buttons - Large touch targets -->
         <div class="flex flex-col space-y-3">
           <button onclick="uploadConfirmed()" class="btn-primary">
             <svg
