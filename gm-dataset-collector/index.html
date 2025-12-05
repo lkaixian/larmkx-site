@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyRecycle Contributor</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #1a1a2e; color: #e4e6f0; }
+        
+        .card { background: #272742; }
+        .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg w-full flex justify-center items-center gap-2; }
+        .btn-secondary { @apply bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg w-full; }
+        
+        /* Protocol Grid */
+        .proto-card { @apply bg-gray-800 p-3 rounded-lg border border-gray-700; }
+        .proto-title { @apply font-bold text-indigo-300 text-sm mb-1 uppercase; }
+        .proto-text { @apply text-xs text-gray-300 leading-relaxed; }
+        .badge-trash { @apply bg-red-900/50 text-red-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-800 uppercase; }
+        .badge-recycle { @apply bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-green-800 uppercase; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Simple Header -->
+    <header class="bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between shadow-md z-10">
+        <div class="flex items-center gap-2">
+            <div class="bg-green-500/20 p-2 rounded-lg">
+                <i class="fa-solid fa-camera text-green-400"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">MyRecycle</h1>
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Contributor Mode</p>
+            </div>
+        </div>
+        <div class="text-xs text-gray-500" id="auth-status">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto p-4 flex flex-col items-center">
+        <div class="max-w-md w-full space-y-4">
+            
+            <!-- Welcome / Instructions -->
+            <div class="bg-indigo-900/30 border border-indigo-500/30 p-4 rounded-xl flex items-start gap-3">
+                <i class="fa-solid fa-circle-info text-indigo-400 mt-1"></i>
+                <div class="text-sm text-indigo-200">
+                    <p class="mb-2">Help us train AI to sort trash! Please take clear photos of single items.</p>
+                    <button onclick="toggleProtocols()" class="text-white underline font-bold hover:text-indigo-300 transition">
+                        View Rules & SOP
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category Selector -->
+            <div class="card p-4 rounded-xl shadow-lg border border-gray-700">
+                <label class="text-xs uppercase font-bold text-gray-500 mb-2 block ml-1">1. What is the object?</label>
+                <select id="category-select" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"></select>
+            </div>
+
+            <!-- Camera View -->
+            <div class="card p-4 rounded-xl shadow-lg border border-gray-700 relative">
+                <label class="text-xs uppercase font-bold text-gray-500 mb-2 block ml-1">2. Capture Photo</label>
+                
+                <div class="relative w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-600 bg-black aspect-[4/3] mb-4 group">
+                    <video id="video-stream" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    
+                    <!-- Overlay Guide -->
+                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
+                        <div class="border-2 border-white/50 w-3/4 h-3/4 rounded-lg"></div>
+                    </div>
+                    
+                    <div id="cam-status" class="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-xs text-white">Starting...</div>
+                </div>
+
+                <canvas id="capture-canvas" class="hidden"></canvas>
+
+                <button onclick="takePhoto()" id="capture-btn" class="btn-primary text-lg">
+                    <i class="fa-solid fa-camera"></i> Snap Photo
+                </button>
+            </div>
+
+            <!-- Queue Status -->
+            <div class="text-center text-xs text-gray-500">
+                <span id="queue-status">Everything uploaded</span> <i class="fa-solid fa-check text-green-500 ml-1"></i>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Review Modal -->
+    <div id="capture-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card max-w-sm w-full p-5 rounded-2xl border border-gray-600 shadow-2xl flex flex-col max-h-[90vh]">
+            <h3 class="text-center font-bold text-xl mb-4 text-white">Looks good?</h3>
+            
+            <div class="relative rounded-lg overflow-hidden mb-4 bg-black border border-gray-700 flex-1 min-h-0">
+                <img id="review-img" class="w-full h-full object-contain">
+            </div>
+            
+            <div class="bg-gray-800 p-3 rounded-lg mb-5 text-sm border border-gray-700">
+                <p class="text-gray-400 text-xs uppercase font-bold mb-1">Categorized As:</p>
+                <p id="review-category" class="font-bold text-white text-lg leading-tight"></p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="discardPhoto()" class="btn-secondary">
+                    <i class="fa-solid fa-rotate-left mr-2"></i> Retake
+                </button>
+                <button onclick="confirmUpload()" class="btn-primary bg-green-600 hover:bg-green-500">
+                    <i class="fa-solid fa-paper-plane mr-2"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Protocols Modal -->
+    <div id="protocols-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card max-w-lg w-full p-6 rounded-2xl border border-gray-600 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
+                <h2 class="text-xl font-bold text-white">Scanning Rules</h2>
+                <button onclick="toggleProtocols()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark fa-xl"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto pr-2 space-y-6 flex-1">
+                <!-- Section: Local Context -->
+                <div>
+                    <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wide"><i class="fa-solid fa-location-dot"></i> Strict Rules</h3>
+                    <div class="space-y-2">
+                        <div class="proto-card flex justify-between items-center">
+                            <div><span class="proto-title block">Ikat Tepi Drink</span> <p class="proto-text">The bag with string/straw is contamination.</p></div>
+                            <span class="badge-trash">Trash (502)</span>
+                        </div>
+                        <div class="proto-card flex justify-between items-center">
+                            <div><span class="proto-title block">Milo Box (Tetra Pak)</span> <p class="proto-text">This is NOT cardboard.</p></div>
+                            <span class="badge-recycle">Carton (303)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Composites -->
+                <div>
+                    <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2 text-sm uppercase tracking-wide"><i class="fa-solid fa-layer-group"></i> Mixed Items</h3>
+                    <div class="space-y-2">
+                        <div class="proto-card">
+                            <div class="flex justify-between mb-1"><span class="proto-title">Pringles Can</span> <span class="badge-trash">Trash</span></div>
+                            <p class="proto-text">If intact (Tube+Metal), it is trash. Separate parts to recycle.</p>
+                        </div>
+                        <div class="proto-card">
+                            <div class="flex justify-between mb-1"><span class="proto-title">Cigarette Box</span> <span class="badge-trash">Trash</span></div>
+                            <p class="proto-text">Whole pack is trash. Tear cardboard apart to recycle.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="toggleProtocols()" class="mt-6 w-full btn-primary bg-gray-700 hover:bg-gray-600">Got it</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
+            authDomain: "gm-dataset.firebaseapp.com",
+            projectId: "gm-dataset",
+            storageBucket: "gm-dataset.firebasestorage.app",
+            messagingSenderId: "738556449518",
+            appId: "1:738556449518:web:d1b1166756b59e7c2d99ff",
+            measurementId: "G-DKBMCVTD56",
+        };
+
+        // --- CATEGORIES (SYNCED WITH WORKBENCH) ---
+        const CATEGORIES = [
+            { id: '000', name: 'Select Item Type...', tip: '', requiresSelection: true },
+            { id: '101', name: 'PET Bottle (Clear/Tinted)', tip: 'Water/Soda bottles' },
+            { id: '102', name: 'HDPE Container (Opaque)', tip: 'Shampoo/Detergent' },
+            { id: '103', name: 'Mixed Rigid Plastic', tip: 'Yogurt/Takeaway tubs' },
+            { id: '104', name: 'Soft Plastic / Film', tip: 'Clean bags/wrap only' },
+            { id: '201', name: 'Aluminum Can', tip: 'Soda cans' },
+            { id: '202', name: 'Tin Can', tip: 'Food/Biscuit tins' },
+            { id: '301', name: 'Cardboard Box', tip: 'Delivery boxes' },
+            { id: '302', name: 'Paper', tip: 'Office/Magazines' },
+            { id: '303', name: 'Tetra Pak / Drink Box', tip: 'Milo/Yeos/Juice' },
+            { id: '401', name: 'Glass Bottle/Jar', tip: 'Any color' },
+            { id: '501', name: 'Dirty / Contaminated', tip: 'Food residue/Oil' },
+            { id: '502', name: 'General Trash', tip: 'Receipts/Straws/Ikat Tepi' },
+            { id: '601', name: 'E-Waste', tip: 'Cables/Batteries' }
+        ];
+
+        let db, auth, userId;
+        let videoStream = null;
+        let capturedBlob = null;
+
+        // --- INIT ---
+        window.onload = function() {
+            initFirebase();
+            populateDropdown();
+            startCamera();
+            
+            // Queue Processor Interval
+            setInterval(processQueue, 3000);
+        };
+
+        async function initFirebase() {
+            const app = initializeApp(FIREBASE_CONFIG);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, user => {
+                const el = document.getElementById('auth-status');
+                if (user) {
+                    userId = user.uid;
+                    el.innerHTML = '<span class="text-green-500 font-bold">Online</span>';
+                } else {
+                    el.innerHTML = 'Signing in...';
+                    signInAnonymously(auth).catch(e => {
+                        el.innerHTML = '<span class="text-red-500">Offline</span>';
+                    });
+                }
+            });
+        }
+
+        function populateDropdown() {
+            const sel = document.getElementById('category-select');
+            CATEGORIES.forEach(cat => {
+                let opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.text = cat.tip ? `${cat.name}` : cat.name; // Simpler text for mobile
+                if(cat.tip) opt.setAttribute('data-tip', cat.tip);
+                opt.disabled = cat.requiresSelection;
+                opt.selected = cat.requiresSelection;
+                sel.add(opt);
+            });
+        }
+
+        // --- CAMERA LOGIC ---
+        async function startCamera() {
+            try {
+                // Request HD
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                });
+                const video = document.getElementById('video-stream');
+                video.srcObject = stream;
+                videoStream = stream;
+                document.getElementById('cam-status').textContent = "HD Ready";
+                document.getElementById('cam-status').className = "absolute bottom-2 left-2 bg-green-500/80 px-2 py-1 rounded text-xs text-white font-bold";
+            } catch (e) {
+                console.error(e);
+                document.getElementById('cam-status').textContent = "Camera Error";
+                document.getElementById('cam-status').className = "absolute bottom-2 left-2 bg-red-500/80 px-2 py-1 rounded text-xs text-white font-bold";
+                alert("Please allow camera access to contribute.");
+            }
+        }
+
+        window.takePhoto = function() {
+            const select = document.getElementById('category-select');
+            if (select.value === '000') {
+                // Shake animation or alert
+                select.classList.add('ring-2', 'ring-red-500');
+                setTimeout(() => select.classList.remove('ring-2', 'ring-red-500'), 500);
+                alert("Please select what object this is first.");
+                return;
+            }
+
+            const video = document.getElementById('video-stream');
+            const canvas = document.getElementById('capture-canvas');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedBlob = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Show Review
+            const catName = select.options[select.selectedIndex].text;
+            document.getElementById('review-img').src = capturedBlob;
+            document.getElementById('review-category').textContent = catName;
+            document.getElementById('capture-modal').classList.remove('hidden');
+        };
+
+        window.discardPhoto = function() {
+            document.getElementById('capture-modal').classList.add('hidden');
+            capturedBlob = null;
+        };
+
+        window.confirmUpload = function() {
+            const select = document.getElementById('category-select');
+            const catName = select.options[select.selectedIndex].text;
+            
+            // Safe filename generation
+            const d = new Date();
+            const ts = d.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+            const safeCat = catName.split('(')[0].trim().replace(/[^a-zA-Z0-9]/g, '');
+            const fileName = `${safeCat}_${ts}`;
+
+            const payload = {
+                mlFileName: fileName,
+                categoryId: select.value,
+                categoryName: catName,
+                imageB64: capturedBlob,
+                timestamp: Date.now(),
+                status: 'pending_local', // Local Queue Status
+                localId: Date.now() + Math.random().toString()
+            };
+
+            // Add to Local Storage Queue
+            const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
+            q.push(payload);
+            localStorage.setItem('guest_queue', JSON.stringify(q));
+            
+            // Reset UI
+            discardPhoto();
+            updateQueueStatus();
+            
+            // Trigger upload attempt
+            processQueue();
+        };
+
+        // --- QUEUE & UPLOAD LOGIC ---
+        function updateQueueStatus() {
+            const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
+            const el = document.getElementById('queue-status');
+            if (q.length === 0) {
+                el.innerHTML = 'All synced <i class="fa-solid fa-check text-green-500 ml-1"></i>';
+            } else {
+                el.innerHTML = `Uploading ${q.length} photos... <i class="fa-solid fa-spinner fa-spin text-indigo-400 ml-1"></i>`;
+            }
+        }
+
+        window.processQueue = async function() {
+            if (!userId) return; // Wait for auth
+            
+            const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
+            if (q.length === 0) return;
+
+            const item = q[0]; // Take first item
+
+            try {
+                // Hardcoded App ID for guests ensures it goes to YOUR dashboard
+                // You must ensure this matches the ID you use in the main workbench
+                const targetAppId = "default-app-id"; 
+                
+                await addDoc(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`), {
+                    ...item,
+                    userId: userId,
+                    status: 'pending_ml', // Your workbench will see this
+                    processed: false,
+                    contributor: 'guest', // Flag to know it came from this app
+                    appId: targetAppId
+                });
+
+                // Success: Remove from queue
+                q.shift();
+                localStorage.setItem('guest_queue', JSON.stringify(q));
+                updateQueueStatus();
+                
+                // Immediately try next if exists
+                if(q.length > 0) processQueue();
+
+            } catch (e) {
+                console.error("Upload error", e);
+                // Keep in queue to retry later
+            }
+        }
+
+        // --- MODALS ---
+        window.toggleProtocols = function() {
+            document.getElementById('protocols-modal').classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
