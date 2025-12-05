@@ -1,771 +1,797 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <base href="/gm-dataset-uploader/" />
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ML Data Collector</title>
-    <!-- Load Tailwind CSS for modern styling -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Workbench</title>
+    
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <script type="module">
-      // =========================================================
-      // 1. CONFIGURATION & GLOBALS
-      // =========================================================
-
-      const appId =
-        typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-      const initialAuthToken =
-        typeof __initial_auth_token !== "undefined"
-          ? __initial_auth_token
-          : null;
-
-      // YOUR CONFIGURATION IS PRESERVED HERE
-      const FIREBASE_CONFIG = {
-        apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
-        authDomain: "gm-dataset.firebaseapp.com",
-        projectId: "gm-dataset",
-        storageBucket: "gm-dataset.firebasestorage.app",
-        messagingSenderId: "738556449518",
-        appId: "1:738556449518:web:d1b1166756b59e7c2d99ff",
-        measurementId: "G-DKBMCVTD56",
-      };
-
-      let db;
-      let auth;
-      let userId = null;
-      let isAuthReady = false;
-      let videoStream = null;
-      let capturedImageData = null;
-
-      const LOCAL_QUEUE_KEY = `ml_photo_queue_${appId}`;
-      const UPLOAD_RETRY_INTERVAL = 5000; // Retry upload every 5 seconds
-
-      const CATEGORIES = [
-        { id: "000", name: "--- Select Category ---", requiresSelection: true },
-        {
-          id: "101",
-          name: "PET Plastic Bottle (Clear)",
-          shortTip: "Clear Drinks Bottle",
-        },
-        {
-          id: "102",
-          name: "HDPE Plastic Container",
-          shortTip: "Milk/Detergent Jug",
-        },
-        {
-          id: "103",
-          name: "Mixed Rigid Plastic",
-          shortTip: "Food Tray/Yogurt Cup",
-        },
-        {
-          id: "201",
-          name: "Aluminum Can (Beverage)",
-          shortTip: "Soft Drink Can",
-        },
-        {
-          id: "202",
-          name: "Ferrous Metal/Tin Can",
-          shortTip: "Steel Food Can",
-        },
-        { id: "301", name: "Cardboard (Clean/Dry)", shortTip: "Shipping Box" },
-        {
-          id: "302",
-          name: "Mixed Paper/Magazine",
-          shortTip: "Office Paper/Glossy",
-        },
-        {
-          id: "401",
-          name: "Clear Glass Bottle",
-          shortTip: "Transparent Wine/Oil",
-        },
-        {
-          id: "402",
-          name: "Colored Glass (Green/Brown)",
-          shortTip: "Beer Bottle",
-        },
-        {
-          id: "501",
-          name: "Contaminated Material",
-          shortTip: "Food/Oil Residue",
-        },
-        {
-          id: "502",
-          name: "Non-Recyclable Item",
-          shortTip: "Plastic Bag/Diaper",
-        },
-      ];
-
-      // Load Firebase SDKs - UPDATED TO v12.6.0
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-      import {
-        getAuth,
-        signInAnonymously,
-        signInWithCustomToken,
-        onAuthStateChanged,
-      } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-      import {
-        getFirestore,
-        addDoc,
-        onSnapshot,
-        collection,
-        query,
-      } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-
-      // =========================================================
-      // 2. UTILITY FUNCTIONS
-      // =========================================================
-
-      function generateFileName(categoryName) {
-        const now = new Date();
-        const pad = (num) => num.toString().padStart(2, "0");
-
-        const year = now.getFullYear();
-        const month = pad(now.getMonth() + 1);
-        const day = pad(now.getDate());
-        const hour = pad(now.getHours());
-        const minute = pad(now.getMinutes());
-        const second = pad(now.getSeconds());
-
-        const sanitizedCategoryName = categoryName
-          .replace(/\s+/g, "")
-          .replace(/[^a-zA-Z0-9]/g, "");
-
-        const datePart = `${year}${month}${day}`;
-        const timePart = `${hour}${minute}${second}`;
-
-        return `${sanitizedCategoryName}_${datePart}_${timePart}`;
-      }
-
-      window.showNotification = function (message, type = "info") {
-        const statusBox = document.getElementById("status-box");
-        statusBox.textContent = message;
-
-        statusBox.className =
-          "text-center font-semibold p-3 rounded-xl transition-colors duration-300";
-
-        const colors = {
-          success: "bg-green-600 text-white",
-          error: "bg-red-600 text-white",
-          warning: "bg-yellow-500 text-black",
-          info: "bg-indigo-400 text-white",
-        };
-
-        statusBox.className += ` ${colors[type] || colors.info}`;
-
-        clearTimeout(statusBox.timer);
-        statusBox.timer = setTimeout(() => {
-          statusBox.textContent =
-            "Live feed ready. Select a category and capture.";
-          statusBox.className =
-            "text-center font-semibold p-3 rounded-xl transition-colors duration-300 bg-gray-700 text-gray-300";
-        }, 5000);
-      };
-
-      // =========================================================
-      // 3. LOCAL QUEUE CORE LOGIC (Reliability)
-      // =========================================================
-
-      function loadQueue() {
-        try {
-          const queueJson = localStorage.getItem(LOCAL_QUEUE_KEY);
-          return queueJson ? JSON.parse(queueJson) : [];
-        } catch (e) {
-          console.error("Error loading queue from localStorage:", e);
-          return [];
-        }
-      }
-
-      function saveQueue(queue) {
-        try {
-          localStorage.setItem(LOCAL_QUEUE_KEY, JSON.stringify(queue));
-          updateQueueCount(queue.length);
-        } catch (e) {
-          console.error("Error saving queue to localStorage:", e);
-          window.showNotification(
-            "Local storage failed. Check device space.",
-            "error"
-          );
-        }
-      }
-
-      function updateQueueCount(count) {
-        document.getElementById("queue-count").textContent = count;
-      }
-
-      window.addToLocalQueue = function (photoData) {
-        const queue = loadQueue();
-        photoData.localId = Date.now() + "_" + Math.floor(Math.random() * 1000);
-        photoData.status = "pending_local";
-        queue.push(photoData);
-        saveQueue(queue);
-        processUploadQueue();
-        window.showNotification(
-          `Photo saved locally (${photoData.mlFileName}). Uploading soon...`,
-          "warning"
-        );
-      };
-
-      window.processUploadQueue = async function () {
-        if (!isAuthReady || !userId || !db) return;
-
-        const queue = loadQueue();
-        if (queue.length === 0) return;
-
-        const item = queue[0];
-
-        try {
-          window.showNotification(
-            `Attempting cloud upload for: ${item.mlFileName}`,
-            "info"
-          );
-
-          const collectionPath = `artifacts/${appId}/public/data/ml_photos`;
-
-          await addDoc(collection(db, collectionPath), {
-            userId: userId,
-            timestamp: item.timestamp,
-            mlFileName: item.mlFileName,
-            categoryId: item.categoryId,
-            categoryName: item.categoryName,
-            imageB64: item.imageB64,
-            status: "pending_ml",
-            processed: false,
-            appId: appId,
-          });
-
-          const updatedQueue = queue.filter(
-            (qItem) => qItem.localId !== item.localId
-          );
-          saveQueue(updatedQueue);
-
-          window.showNotification(
-            `Cloud upload successful: ${item.mlFileName}!`,
-            "success"
-          );
-
-          if (updatedQueue.length > 0) {
-            processUploadQueue();
-          }
-        } catch (error) {
-          console.error(`Upload failed for ${item.mlFileName}:`, error.message);
-          window.showNotification(
-            `Upload failed for ${item.mlFileName}. Retrying in ${
-              UPLOAD_RETRY_INTERVAL / 1000
-            }s.`,
-            "error"
-          );
-        }
-      };
-
-      // =========================================================
-      // 4. CORE APP FUNCTIONS (Camera, Capture, UI)
-      // =========================================================
-
-      window.setupFirebase = async function () {
-        try {
-          if (Object.keys(FIREBASE_CONFIG).length === 0) {
-            window.showNotification(
-              "Error: Firebase config is missing.",
-              "error"
-            );
-            return;
-          }
-
-          const app = initializeApp(FIREBASE_CONFIG);
-          db = getFirestore(app);
-          auth = getAuth(app);
-
-          onAuthStateChanged(auth, (user) => {
-            if (user) {
-              userId = user.uid;
-              document.getElementById(
-                "user-id-display"
-              ).textContent = `User ID: ${userId}`;
-              isAuthReady = true;
-              startCamera();
-              loadPhotos();
-              setInterval(processUploadQueue, UPLOAD_RETRY_INTERVAL);
-              processUploadQueue();
-            } else {
-              userId = null;
-              isAuthReady = true;
-            }
-          });
-
-          try {
-            if (initialAuthToken) {
-              await signInWithCustomToken(auth, initialAuthToken);
-            } else {
-              await signInAnonymously(auth);
-            }
-          } catch (authError) {
-            console.warn("Initial auth failed, falling back:", authError);
-            await signInAnonymously(auth);
-          }
-
-          populateCategories();
-        } catch (error) {
-          console.error("Error setting up Firebase:", error);
-          window.showNotification(
-            `Firebase setup failed: ${error.message}`,
-            "error"
-          );
-        }
-      };
-
-      function populateCategories() {
-        const select = document.getElementById("category-select");
-        CATEGORIES.forEach((cat) => {
-          const option = document.createElement("option");
-          option.value = cat.id;
-          option.textContent = `${cat.name} (${cat.shortTip})`;
-          option.disabled = cat.requiresSelection || false;
-          option.selected = cat.requiresSelection || false;
-          select.appendChild(option);
-        });
-      }
-
-      async function startCamera() {
-        const video = document.getElementById("video-stream");
-        const captureBtn = document.getElementById("capture-btn");
-
-        if (videoStream) {
-          videoStream.getTracks().forEach((track) => track.stop());
-        }
-
-        try {
-          window.showNotification("Requesting HD camera access...", "info");
-          
-          // Request 720p - ideal for bounding box annotation
-          const constraints = {
-            video: {
-              facingMode: "environment",
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            }
-          };
-
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          videoStream = stream;
-          video.srcObject = stream;
-          video.play();
-          window.showNotification(
-            "Live feed ready (HD). Select a category and capture.",
-            "success"
-          );
-          captureBtn.disabled = false;
-        } catch (err) {
-          console.error("Error accessing camera:", err);
-          window.showNotification(
-            "Camera access denied or failed. Please check permissions.",
-            "error"
-          );
-          captureBtn.disabled = true;
-        }
-      }
-
-      window.takePhoto = function () {
-        const video = document.getElementById("video-stream");
-        const canvas = document.getElementById("photo-canvas");
-        const categorySelect = document.getElementById("category-select");
-
-        const selectedCategoryId = categorySelect.value;
-        const selectedCategoryText =
-          categorySelect.options[categorySelect.selectedIndex].textContent;
-        const selectedCategoryName = selectedCategoryText.split("(")[0].trim();
-
-        if (selectedCategoryId === "000") {
-          window.showNotification(
-            "Please select a valid ML category before capturing.",
-            "warning"
-          );
-          categorySelect.focus();
-          return;
-        }
-
-        if (!videoStream) {
-          console.error("Camera stream not available.");
-          return;
-        }
-
-        // Capture full resolution provided by camera
-        canvas.width = video.videoWidth || 1280;
-        canvas.height = video.videoHeight || 720;
-        
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        capturedImageData = canvas.toDataURL("image/jpeg", 0.9);
-
-        const fileName = generateFileName(selectedCategoryName);
-
-        document.getElementById("review-img").src = capturedImageData;
-        document.getElementById("review-category-name").textContent =
-          selectedCategoryText;
-        document.getElementById("review-filename").textContent = fileName;
-
-        document.getElementById("review-modal").classList.remove("hidden");
-      };
-
-      window.retakePhoto = function () {
-        document.getElementById("review-modal").classList.add("hidden");
-        capturedImageData = null;
-        window.showNotification("Review dismissed. Ready for retake.", "info");
-      };
-
-      window.uploadConfirmed = function () {
-        if (!capturedImageData) {
-          window.showNotification("No photo data to upload.", "error");
-          retakePhoto();
-          return;
-        }
-
-        const categorySelect = document.getElementById("category-select");
-
-        const photoData = {
-          timestamp: Date.now(),
-          mlFileName: document.getElementById("review-filename").textContent,
-          categoryId: categorySelect.value,
-          categoryName: document.getElementById("review-category-name")
-            .textContent,
-          imageB64: capturedImageData,
-        };
-
-        window.addToLocalQueue(photoData);
-
-        capturedImageData = null;
-        document.getElementById("review-modal").classList.add("hidden");
-      };
-
-      function loadPhotos() {
-        if (!isAuthReady || !userId || !db) return;
-
-        const photosList = document.getElementById("photos-list");
-        const collectionPath = `artifacts/${appId}/public/data/ml_photos`;
-
-        const q = collection(db, collectionPath);
-
-        onSnapshot(
-          q,
-          (snapshot) => {
-            let photos = [];
-            snapshot.forEach((doc) => {
-              photos.push({ id: doc.id, ...doc.data() });
-            });
-
-            photos.sort((a, b) => b.timestamp - a.timestamp);
-
-            photosList.innerHTML = "";
-
-            if (photos.length === 0) {
-              photosList.innerHTML =
-                '<p class="text-gray-500 text-center py-4">No photos uploaded to the cloud yet.</p>';
-              return;
-            }
-
-            photos.slice(0, 5).forEach((photo) => {
-              const time = new Date(photo.timestamp).toLocaleTimeString();
-              const date = new Date(photo.timestamp).toLocaleDateString();
-
-              const item = document.createElement("div");
-              item.className =
-                "p-3 bg-white/5 border border-white/10 rounded-xl shadow-lg flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4";
-
-              const img = document.createElement("img");
-              img.src = photo.imageB64;
-              img.className =
-                "w-16 h-16 object-cover rounded-md border border-gray-600 flex-shrink-0";
-              img.alt = photo.mlFileName || `Uploaded photo at ${time}`;
-
-              const details = document.createElement("div");
-              details.className = "flex flex-col flex-grow min-w-0";
-              details.innerHTML = `
-                        <p class="font-semibold text-indigo-300 truncate">${
-                          photo.mlFileName || "Unknown Filename"
-                        }</p>
-                        <p class="text-xs text-gray-400">Category: ${
-                          photo.categoryName || "N/A"
-                        }</p>
-                        <p class="text-xs text-gray-500">Time: ${date} ${time}</p>
-                        <p class="text-sm">Status: <span class="text-green-400 font-medium">Cloud Uploaded</span></p>
-                    `;
-
-              item.appendChild(img);
-              item.appendChild(details);
-              photosList.appendChild(item);
-            });
-          },
-          (error) => {
-            console.error("Error listening to photos:", error);
-            window.showNotification(
-              `Error loading cloud data: ${error.message}`,
-              "error"
-            );
-          }
-        );
-      }
-
-      window.onload = function () {
-        setupFirebase();
-        updateQueueCount(loadQueue().length);
-      };
-    </script>
     <style>
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: #1a1a2e;
-        color: #e4e6f0;
-      }
-      #video-stream {
-        width: 100%;
-        /* FIXED: Removed fixed height so it respects aspect ratio */
-        height: auto; 
-        aspect-ratio: 16 / 9; /* Typical 720p/1080p aspect ratio */
-        object-fit: contain; /* Ensures full frame is visible, no cropping */
-        background-color: #000;
-      }
-      #photo-canvas {
-        display: none;
-      }
-      .container {
-        max-width: 600px;
-      }
-      .card {
-        background: #272742;
-      }
-      .btn-primary {
-        background-color: #4f46e5;
-        color: white;
-        font-weight: bold;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        transition: background-color 0.15s ease-in-out;
-        font-size: 1rem;
-      }
-      .btn-primary:hover {
-        background-color: #4338ca;
-      }
-      .btn-primary:active {
-        background-color: #3730a3;
-      }
-      .btn-secondary {
-        background-color: #6b7280;
-        color: white;
-        font-weight: bold;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        transition: background-color 0.15s ease-in-out;
-        font-size: 1rem;
-      }
-      .btn-secondary:hover {
-        background-color: #4b5563;
-      }
-      .btn-secondary:active {
-        background-color: #374151;
-      }
-      .select-input {
-        width: 100%;
-        padding: 0.75rem;
-        margin-bottom: 1rem;
-        border-radius: 0.5rem;
-        background-color: #374151;
-        border: 1px solid #4b5563;
-        color: white;
-      }
-      .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.95);
-        z-index: 50;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .modal-content {
-        width: 95%;
-        max-width: 500px;
-        max-height: 95vh;
-        background: #272742;
-        padding: 1rem;
-        border-radius: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-      }
-      .modal-image {
-        width: 100%;
-        height: auto;
-        max-height: 60vh;
-        object-fit: contain;
-        border-radius: 1rem;
-        margin-bottom: 1rem;
-      }
+        body { font-family: 'Inter', sans-serif; background-color: #1a1a2e; color: #e4e6f0; }
+        
+        /* Navigation Styles */
+        .nav-btn { @apply px-4 py-2 rounded-lg font-semibold transition text-gray-400 hover:bg-gray-700 hover:text-white flex items-center gap-2; }
+        .nav-btn.active { @apply bg-indigo-600 text-white shadow-lg; }
+        
+        /* View Management */
+        .view-section { display: none; height: calc(100vh - 64px); overflow-y: auto; }
+        .view-section.active { display: flex; flex-direction: column; }
+
+        /* Shared Component Styles */
+        .card { background: #272742; }
+        .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl transition shadow-lg; }
+        .btn-secondary { @apply bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl transition shadow-lg; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+        
+        canvas { cursor: crosshair; touch-action: none; }
     </style>
-  </head>
-  <body class="p-4 sm:p-6">
-    <div class="container mx-auto">
-      <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-400">
-        ML Data Collector
-      </h1>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
 
-      <div
-        id="status-box"
-        class="text-center font-semibold p-3 rounded-xl mb-4 bg-gray-700 text-gray-300"
-      >
-        Initializing app...
-      </div>
-
-      <div
-        class="card p-4 rounded-xl mb-6 shadow-2xl flex justify-between items-center"
-      >
-        <p
-          id="user-id-display"
-          class="text-xs text-gray-400 truncate flex-grow"
-        >
-          User ID: Loading...
-        </p>
-        <p class="text-sm font-bold ml-4 text-yellow-300">
-          Local Queue: <span id="queue-count" class="text-lg">0</span>
-        </p>
-      </div>
-
-      <div id="capture-section" class="card p-4 rounded-xl mb-6 shadow-2xl">
-        <h2 class="text-xl font-semibold mb-3">Capture Setup</h2>
-
-        <label
-          for="category-select"
-          class="block text-sm font-medium mb-1 text-gray-300"
-          >ML Category:</label
-        >
-        <select id="category-select" class="select-input"></select>
-
-        <h2 class="text-xl font-semibold mt-4 mb-3">Live Camera Feed</h2>
-
-        <div
-          class="w-full rounded-lg overflow-hidden border-4 border-indigo-500/50 mb-4 shadow-inner"
-        >
-          <video id="video-stream" autoplay playsinline muted></video>
+    <!-- Navigation Bar -->
+    <nav class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-4 z-50 shadow-md">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-indigo-400 text-xl"></i>
+            <span class="font-bold text-lg hidden sm:inline">ML Workbench</span>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="switchTab('capture')" id="nav-capture" class="nav-btn active">
+                <i class="fa-solid fa-camera"></i> <span class="hidden sm:inline">Capture</span>
+            </button>
+            <button onclick="switchTab('download')" id="nav-download" class="nav-btn">
+                <i class="fa-solid fa-cloud-arrow-down"></i> <span class="hidden sm:inline">Download</span>
+            </button>
+            <button onclick="switchTab('annotate')" id="nav-annotate" class="nav-btn">
+                <i class="fa-solid fa-crop-simple"></i> <span class="hidden sm:inline">Annotate</span>
+            </button>
         </div>
 
-        <canvas id="photo-canvas"></canvas>
-
-        <button
-          id="capture-btn"
-          onclick="takePhoto()"
-          disabled
-          class="btn-primary w-full text-lg"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6 inline-block mr-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.218A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.218a2 2 0 001.664.89H21a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-          Capture Photo for Review
-        </button>
-      </div>
-
-      <div class="card p-4 rounded-xl shadow-2xl">
-        <h2 class="text-xl font-semibold mb-4 text-indigo-300">
-          Recent Cloud Uploads
-        </h2>
-        <div id="photos-list" class="space-y-3">
-          <p class="text-gray-500 text-center py-4">
-            Loading data from cloud...
-          </p>
+        <div class="text-xs text-gray-500" id="auth-status">
+            <i class="fa-solid fa-circle text-yellow-500"></i> Connecting...
         </div>
-      </div>
+    </nav>
+
+    <!-- ================= VIEW 1: CAPTURE ================= -->
+    <div id="view-capture" class="view-section active p-4">
+        <div class="max-w-2xl mx-auto w-full">
+            <!-- Status & Queue -->
+            <div class="flex justify-between items-center mb-4 bg-gray-800 p-3 rounded-xl">
+                <div id="capture-status" class="text-sm font-medium text-indigo-300">Camera Ready</div>
+                <div class="text-xs font-mono bg-black/30 px-2 py-1 rounded text-yellow-300">
+                    Queue: <span id="queue-count">0</span>
+                </div>
+            </div>
+
+            <!-- Main Capture Card -->
+            <div class="card p-4 rounded-xl shadow-2xl mb-6">
+                <h2 class="text-xl font-semibold mb-3">1. Select Category</h2>
+                <select id="category-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white mb-4 outline-none focus:border-indigo-500"></select>
+
+                <h2 class="text-xl font-semibold mb-3">2. Capture Object</h2>
+                <div class="relative w-full rounded-lg overflow-hidden border-4 border-indigo-500/30 mb-4 bg-black aspect-video">
+                    <video id="video-stream" autoplay playsinline muted class="w-full h-full object-contain"></video>
+                </div>
+                <canvas id="capture-canvas" class="hidden"></canvas>
+
+                <button onclick="takePhoto()" id="capture-btn" class="btn-primary w-full text-lg py-4">
+                    <i class="fa-solid fa-camera mr-2"></i> Take Photo
+                </button>
+            </div>
+
+            <!-- Recent Uploads List -->
+            <div class="card p-4 rounded-xl shadow-lg">
+                <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">Recent Uploads</h3>
+                <div id="photos-list" class="space-y-2 text-sm text-gray-500 text-center py-2">
+                    Waiting for uploads...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Capture Confirmation Modal -->
+        <div id="capture-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4">
+            <div class="card max-w-md w-full p-4 rounded-2xl flex flex-col max-h-[90vh]">
+                <h3 class="text-center font-bold text-xl mb-2 text-indigo-300">Confirm Photo</h3>
+                <img id="review-img" class="rounded-lg mb-4 object-contain max-h-[50vh] bg-black">
+                <div class="bg-gray-700 p-3 rounded-lg mb-4 text-sm">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-gray-400">Class:</span>
+                        <span id="review-category" class="font-bold text-white"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">File:</span>
+                        <span id="review-filename" class="font-mono text-xs text-yellow-300"></span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="discardPhoto()" class="btn-secondary">Retake</button>
+                    <button onclick="confirmUpload()" class="btn-primary">Save & Upload</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="review-modal" class="modal-overlay hidden">
-      <div class="modal-content">
-        <h3 class="text-2xl font-bold mb-3 text-indigo-300 text-center">
-          Review Captured Photo
-        </h3>
+    <!-- ================= VIEW 2: DOWNLOAD ================= -->
+    <div id="view-download" class="view-section items-center justify-center p-4">
+        <div class="card p-8 rounded-2xl shadow-2xl max-w-lg w-full text-center">
+            <div class="mb-6">
+                <i class="fa-solid fa-database text-6xl text-indigo-500 mb-4"></i>
+                <h2 class="text-2xl font-bold">Export Dataset</h2>
+                <p class="text-gray-400 mt-2">Fetch all captured images and metadata as a JSON file.</p>
+            </div>
+            
+            <div class="bg-gray-700/50 p-4 rounded-lg text-left mb-6">
+                <label class="text-xs text-gray-500 font-bold uppercase">App ID</label>
+                <input type="text" id="dl-app-id" value="default-app-id" class="w-full bg-transparent border-b border-gray-600 py-1 text-white outline-none focus:border-indigo-500">
+            </div>
 
-        <img
-          id="review-img"
-          class="modal-image"
-          src=""
-          alt="Captured Photo Preview"
-        />
-
-        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-          <p class="text-sm text-gray-400">
-            Category:
-            <span
-              id="review-category-name"
-              class="text-white font-medium"
-            ></span>
-          </p>
-          <p class="text-sm text-gray-400">
-            Filename:
-            <span
-              id="review-filename"
-              class="text-yellow-300 font-mono text-xs break-words"
-            ></span>
-          </p>
+            <button onclick="startDownload()" id="dl-btn" class="btn-primary w-full py-3 text-lg">
+                <i class="fa-solid fa-file-export mr-2"></i> Download JSON
+            </button>
+            <p id="dl-status" class="mt-4 text-sm text-gray-400"></p>
         </div>
-
-        <div class="flex flex-col space-y-3">
-          <button onclick="uploadConfirmed()" class="btn-primary">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 inline-block mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            Confirm & Save Locally
-          </button>
-          <button onclick="retakePhoto()" class="btn-secondary">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 inline-block mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            Retake Photo
-          </button>
-        </div>
-      </div>
     </div>
-  </body>
+
+    <!-- ================= VIEW 3: ANNOTATE ================= -->
+    <div id="view-annotate" class="view-section h-full flex-row">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-900 border-r border-gray-700 flex flex-col hidden md:flex">
+            <div class="p-4 border-b border-gray-700">
+                <h3 class="font-bold text-gray-300">Tools</h3>
+                <div class="mt-2 space-y-2 text-xs text-gray-500">
+                    <div class="flex justify-between"><span>Next Img</span> <kbd class="bg-gray-700 px-1 rounded">W</kbd></div>
+                    <div class="flex justify-between"><span>Prev Img</span> <kbd class="bg-gray-700 px-1 rounded">S</kbd></div>
+                    <div class="flex justify-between"><span>Delete Box</span> <kbd class="bg-gray-700 px-1 rounded">Del</kbd></div>
+                </div>
+            </div>
+            <div class="p-4 border-b border-gray-700">
+                <input type="file" id="json-input" accept=".json" class="hidden" onchange="loadAnnotationFile(this)">
+                <button onclick="document.getElementById('json-input').click()" class="w-full bg-gray-800 hover:bg-gray-700 py-2 rounded text-sm border border-gray-600 transition">
+                    <i class="fa-solid fa-folder-open mr-2"></i> Load JSON
+                </button>
+            </div>
+            <div id="box-list" class="flex-1 overflow-y-auto p-2">
+                <p class="text-center text-gray-600 text-xs mt-4">Load dataset to start</p>
+            </div>
+            <div class="p-4 border-t border-gray-700">
+                <button onclick="exportYOLO()" id="export-yolo-btn" disabled class="w-full bg-green-700 hover:bg-green-600 text-white py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-file-zipper mr-2"></i> Export YOLO
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="flex-1 bg-black relative flex flex-col">
+            <!-- Mobile Toolbar -->
+            <div class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center bg-gray-800/90 backdrop-blur rounded-full px-4 py-2 gap-4 z-10 shadow-xl">
+                <button onclick="prevImage()" class="hover:text-indigo-400"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="ann-counter" class="font-mono font-bold text-sm min-w-[60px] text-center">--/--</span>
+                <button onclick="nextImage()" class="hover:text-indigo-400"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <div id="canvas-wrapper" class="flex-1 flex items-center justify-center overflow-hidden p-4">
+                <canvas id="editor"></canvas>
+            </div>
+        </div>
+
+        <!-- Right Properties Panel -->
+        <div class="w-64 bg-gray-900 border-l border-gray-700 p-4 hidden lg:block">
+            <h3 class="font-bold text-gray-300 mb-4">Properties</h3>
+            <div class="mb-4">
+                <label class="text-xs uppercase text-gray-500 font-bold">Image Class</label>
+                <div id="meta-category" class="text-indigo-400 font-medium truncate">--</div>
+            </div>
+            <div class="mb-6">
+                <label class="text-xs uppercase text-gray-500 font-bold">Filename</label>
+                <div id="meta-filename" class="text-xs font-mono text-gray-400 break-all">--</div>
+            </div>
+            
+            <hr class="border-gray-700 mb-4">
+            
+            <label class="text-xs uppercase text-gray-500 font-bold mb-2 block">Active Box Label</label>
+            <select id="ann-class-selector" onchange="updateActiveBoxClass()" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm outline-none focus:border-indigo-500"></select>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
+            authDomain: "gm-dataset.firebaseapp.com",
+            projectId: "gm-dataset",
+            storageBucket: "gm-dataset.firebasestorage.app",
+            messagingSenderId: "738556449518",
+            appId: "1:738556449518:web:d1b1166756b59e7c2d99ff",
+            measurementId: "G-DKBMCVTD56",
+        };
+
+        const CATEGORIES = [
+            { id: '000', name: '--- Select ---', yoloId: -1, requiresSelection: true },
+            { id: '101', name: 'PET Plastic Bottle', yoloId: 0, tip: 'Clear Bottle' },
+            { id: '102', name: 'HDPE Container', yoloId: 1, tip: 'Milk Jug' },
+            { id: '103', name: 'Mixed Rigid Plastic', yoloId: 2, tip: 'Yogurt/Tray' },
+            { id: '201', name: 'Aluminum Can', yoloId: 3, tip: 'Soda Can' },
+            { id: '202', name: 'Tin Can', yoloId: 4, tip: 'Food Can' },
+            { id: '301', name: 'Cardboard', yoloId: 5, tip: 'Box' },
+            { id: '302', name: 'Paper', yoloId: 6, tip: 'Mixed Paper' },
+            { id: '401', name: 'Clear Glass', yoloId: 7, tip: 'Wine/Jar' },
+            { id: '402', name: 'Colored Glass', yoloId: 8, tip: 'Beer Bottle' },
+            { id: '501', name: 'Contaminated', yoloId: 9, tip: 'Dirty' },
+            { id: '502', name: 'Non-Recyclable', yoloId: 10, tip: 'Trash' }
+        ];
+
+        // --- GLOBAL STATE ---
+        let app, db, auth, userId;
+        let videoStream = null;
+        let capturedBlob = null;
+        let activeTab = 'capture';
+        
+        // Annotator State
+        let annData = [];
+        let annIndex = 0;
+        let annImgObj = new Image();
+        let annCanvas, annCtx;
+        let isDrawing = false, startX, startY, activeBoxIndex = -1;
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            initFirebase();
+            populateDropdowns();
+            initAnnotator();
+            updateQueueCount();
+            
+            // Start in Capture mode
+            switchTab('capture');
+            
+            // Queue Processor
+            setInterval(processUploadQueue, 5000);
+        };
+
+        async function initFirebase() {
+            try {
+                app = initializeApp(FIREBASE_CONFIG);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, user => {
+                    const statusEl = document.getElementById('auth-status');
+                    if (user) {
+                        userId = user.uid;
+                        statusEl.innerHTML = `<i class="fa-solid fa-circle text-green-500"></i> Connected`;
+                        loadRecentPhotos();
+                    } else {
+                        statusEl.innerHTML = `<i class="fa-solid fa-circle text-red-500"></i> Offline`;
+                        signInAnonymously(auth);
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                alert("Firebase Error: " + e.message);
+            }
+        }
+
+        function populateDropdowns() {
+            // Capture Dropdown
+            const capSel = document.getElementById('category-select');
+            // Annotator Dropdown
+            const annSel = document.getElementById('ann-class-selector');
+
+            CATEGORIES.forEach(cat => {
+                // Capture
+                let opt = document.createElement('option');
+                opt.value = cat.id;
+                opt.text = cat.tip ? `${cat.name} (${cat.tip})` : cat.name;
+                opt.disabled = cat.requiresSelection;
+                opt.selected = cat.requiresSelection;
+                capSel.add(opt);
+
+                // Annotator (skip placeholder)
+                if (cat.yoloId >= 0) {
+                    let annOpt = document.createElement('option');
+                    annOpt.value = cat.yoloId;
+                    annOpt.text = `[${cat.yoloId}] ${cat.name}`;
+                    annSel.add(annOpt);
+                }
+            });
+        }
+
+        // --- NAVIGATION LOGIC ---
+        window.switchTab = function(tabName) {
+            // Update State
+            activeTab = tabName;
+            
+            // UI Update
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${tabName}`).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+
+            // Resource Management
+            if (tabName === 'capture') {
+                startCamera();
+            } else {
+                stopCamera();
+            }
+        };
+
+        // ==========================================
+        // MODULE: CAPTURE
+        // ==========================================
+        
+        async function startCamera() {
+            const video = document.getElementById('video-stream');
+            if (videoStream) return; // Already running
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                videoStream = stream;
+                video.srcObject = stream;
+                document.getElementById('capture-status').textContent = "Camera Active (HD)";
+                document.getElementById('capture-status').className = "text-sm font-medium text-green-400";
+            } catch (err) {
+                console.error(err);
+                document.getElementById('capture-status').textContent = "Camera Error";
+                document.getElementById('capture-status').className = "text-sm font-medium text-red-400";
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                document.getElementById('video-stream').srcObject = null;
+                document.getElementById('capture-status').textContent = "Camera Paused";
+                document.getElementById('capture-status').className = "text-sm font-medium text-gray-400";
+            }
+        }
+
+        window.takePhoto = function() {
+            const select = document.getElementById('category-select');
+            if (select.value === '000') {
+                alert("Please select a category first.");
+                return;
+            }
+
+            const video = document.getElementById('video-stream');
+            const canvas = document.getElementById('capture-canvas');
+            
+            // Match canvas to video resolution
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            capturedBlob = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Show Review
+            const catName = select.options[select.selectedIndex].text;
+            const fileName = generateFileName(catName.split('(')[0].trim());
+            
+            document.getElementById('review-img').src = capturedBlob;
+            document.getElementById('review-category').textContent = catName;
+            document.getElementById('review-filename').textContent = fileName;
+            document.getElementById('capture-modal').classList.remove('hidden');
+        };
+
+        window.discardPhoto = function() {
+            document.getElementById('capture-modal').classList.add('hidden');
+            capturedBlob = null;
+        };
+
+        window.confirmUpload = function() {
+            const select = document.getElementById('category-select');
+            const fileName = document.getElementById('review-filename').textContent;
+            
+            const payload = {
+                mlFileName: fileName,
+                categoryId: select.value,
+                categoryName: select.options[select.selectedIndex].text.split('(')[0].trim(),
+                imageB64: capturedBlob,
+                timestamp: Date.now(),
+                status: 'pending_local',
+                localId: Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            };
+
+            addToQueue(payload);
+            discardPhoto();
+        };
+
+        // --- QUEUE LOGIC ---
+        function addToQueue(item) {
+            const q = JSON.parse(localStorage.getItem(`queue_${FIREBASE_CONFIG.projectId}`) || '[]');
+            q.push(item);
+            localStorage.setItem(`queue_${FIREBASE_CONFIG.projectId}`, JSON.stringify(q));
+            updateQueueCount();
+            processUploadQueue(); // Try immediately
+        }
+
+        function updateQueueCount() {
+            const q = JSON.parse(localStorage.getItem(`queue_${FIREBASE_CONFIG.projectId}`) || '[]');
+            document.getElementById('queue-count').textContent = q.length;
+        }
+
+        window.processUploadQueue = async function() {
+            if (!userId) return;
+            const qName = `queue_${FIREBASE_CONFIG.projectId}`;
+            const q = JSON.parse(localStorage.getItem(qName) || '[]');
+            
+            if (q.length === 0) return;
+
+            const item = q[0]; // Process head
+            
+            try {
+                // Ensure appId is defined or use default
+                const currentAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+                
+                await addDoc(collection(db, `artifacts/${currentAppId}/public/data/ml_photos`), {
+                    ...item,
+                    userId: userId,
+                    status: 'pending_ml',
+                    processed: false,
+                    appId: currentAppId
+                });
+
+                // Success - remove from queue
+                q.shift();
+                localStorage.setItem(qName, JSON.stringify(q));
+                updateQueueCount();
+                
+                // Process next if exists
+                if (q.length > 0) window.processUploadQueue();
+                
+            } catch (e) {
+                console.error("Upload failed", e);
+            }
+        };
+
+        function generateFileName(catName) {
+            const d = new Date();
+            const ts = d.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+            const safeName = catName.replace(/[^a-zA-Z0-9]/g, '');
+            return `${safeName}_${ts}`;
+        }
+
+        function loadRecentPhotos() {
+            const currentAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+            const q = collection(db, `artifacts/${currentAppId}/public/data/ml_photos`);
+            
+            onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('photos-list');
+                const photos = [];
+                snapshot.forEach(doc => photos.push(doc.data()));
+                photos.sort((a,b) => b.timestamp - a.timestamp);
+                
+                if(photos.length === 0) {
+                    list.innerHTML = "No uploads yet.";
+                    return;
+                }
+
+                list.innerHTML = photos.slice(0, 3).map(p => `
+                    <div class="bg-gray-700/50 p-2 rounded flex items-center justify-between">
+                        <span class="truncate w-32 font-mono text-xs">${p.mlFileName}</span>
+                        <span class="text-green-400 text-xs"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // ==========================================
+        // MODULE: DOWNLOAD
+        // ==========================================
+        
+        window.startDownload = async function() {
+            const btn = document.getElementById('dl-btn');
+            const status = document.getElementById('dl-status');
+            const targetAppId = document.getElementById('dl-app-id').value || 'default-app-id';
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Fetching...';
+            status.textContent = "Querying Firestore...";
+
+            try {
+                const snapshot = await getDocs(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`));
+                const data = [];
+                snapshot.forEach(doc => data.push(doc.data()));
+
+                if (data.length === 0) throw new Error("No data found");
+
+                status.textContent = `Generating JSON for ${data.length} records...`;
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `dataset_${targetAppId}_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                status.textContent = "Download Complete!";
+                status.className = "mt-4 text-sm text-green-400";
+            } catch (e) {
+                status.textContent = "Error: " + e.message;
+                status.className = "mt-4 text-sm text-red-400";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-file-export mr-2"></i> Download JSON';
+            }
+        };
+
+        // ==========================================
+        // MODULE: ANNOTATOR (YOLO)
+        // ==========================================
+
+        function initAnnotator() {
+            annCanvas = document.getElementById('editor');
+            annCtx = annCanvas.getContext('2d');
+            
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', e => {
+                if (activeTab !== 'annotate') return;
+                
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (activeBoxIndex !== -1 && annData[annIndex].boxes) {
+                        annData[annIndex].boxes.splice(activeBoxIndex, 1);
+                        activeBoxIndex = -1;
+                        drawAnn();
+                    }
+                }
+                if (e.key.toLowerCase() === 'w') nextImage();
+                if (e.key.toLowerCase() === 's') prevImage();
+            });
+
+            // Canvas Mouse Events
+            annCanvas.addEventListener('mousedown', onAnnMouseDown);
+            annCanvas.addEventListener('mousemove', onAnnMouseMove);
+            annCanvas.addEventListener('mouseup', onAnnMouseUp);
+        }
+
+        window.loadAnnotationFile = function(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    // Init boxes if not present
+                    annData = json.map(item => ({ ...item, boxes: item.boxes || [] }));
+                    annIndex = 0;
+                    document.getElementById('export-yolo-btn').disabled = false;
+                    loadAnnImage(0);
+                } catch(err) { alert("Invalid JSON"); }
+            };
+            reader.readAsText(file);
+        };
+
+        function loadAnnImage(idx) {
+            if (!annData.length) return;
+            if (idx < 0) idx = 0;
+            if (idx >= annData.length) idx = annData.length - 1;
+            
+            annIndex = idx;
+            const item = annData[annIndex];
+            
+            // Metadata Update
+            document.getElementById('ann-counter').textContent = `${idx + 1}/${annData.length}`;
+            document.getElementById('meta-filename').textContent = item.mlFileName || 'Unknown';
+            document.getElementById('meta-category').textContent = item.categoryName || 'Unknown';
+
+            // Auto-select dropdown based on source category
+            const matchingCat = CATEGORIES.find(c => c.id === item.categoryId);
+            if (matchingCat && matchingCat.yoloId >= 0) {
+                document.getElementById('ann-class-selector').value = matchingCat.yoloId;
+            }
+
+            annImgObj.onload = () => {
+                annCanvas.width = annImgObj.width;
+                annCanvas.height = annImgObj.height;
+                
+                // Fit canvas to screen visually
+                const wrapper = document.getElementById('canvas-wrapper');
+                const scale = Math.min(wrapper.clientWidth / annCanvas.width, wrapper.clientHeight / annCanvas.height);
+                annCanvas.style.width = (annCanvas.width * scale) + 'px';
+                annCanvas.style.height = (annCanvas.height * scale) + 'px';
+                
+                drawAnn();
+                renderBoxList();
+            };
+            annImgObj.src = item.imageB64;
+        }
+
+        window.nextImage = () => loadAnnImage(annIndex + 1);
+        window.prevImage = () => loadAnnImage(annIndex - 1);
+
+        function drawAnn() {
+            annCtx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+            annCtx.drawImage(annImgObj, 0, 0);
+            
+            // Dim overlay
+            annCtx.fillStyle = 'rgba(0,0,0,0.15)';
+            annCtx.fillRect(0,0, annCanvas.width, annCanvas.height);
+
+            const boxes = annData[annIndex].boxes || [];
+            boxes.forEach((box, i) => {
+                const isActive = (i === activeBoxIndex);
+                const color = isActive ? '#ffffff' : `hsl(${(box.yoloId * 50) % 360}, 100%, 50%)`;
+                
+                annCtx.beginPath();
+                annCtx.lineWidth = isActive ? 4 : 2;
+                annCtx.strokeStyle = color;
+                annCtx.rect(box.x, box.y, box.w, box.h);
+                annCtx.stroke();
+                
+                // Label
+                annCtx.fillStyle = color;
+                annCtx.font = "bold 20px Arial";
+                const label = CATEGORIES.find(c => c.yoloId == box.yoloId)?.name || '?';
+                annCtx.fillText(label, box.x, box.y - 8);
+            });
+        }
+
+        function getMousePos(e) {
+            const rect = annCanvas.getBoundingClientRect();
+            const scaleX = annCanvas.width / rect.width;
+            const scaleY = annCanvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function onAnnMouseDown(e) {
+            const pos = getMousePos(e);
+            const boxes = annData[annIndex].boxes;
+            
+            // Hit detection (reverse order)
+            let hit = -1;
+            for (let i = boxes.length - 1; i >= 0; i--) {
+                const b = boxes[i];
+                if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+                    hit = i;
+                    break;
+                }
+            }
+
+            if (hit !== -1) {
+                activeBoxIndex = hit;
+                document.getElementById('ann-class-selector').value = boxes[hit].yoloId;
+            } else {
+                isDrawing = true;
+                activeBoxIndex = -1;
+                startX = pos.x;
+                startY = pos.y;
+            }
+            drawAnn();
+            renderBoxList();
+        }
+
+        function onAnnMouseMove(e) {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            drawAnn();
+            annCtx.strokeStyle = '#00ff00';
+            annCtx.lineWidth = 2;
+            annCtx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
+        }
+
+        function onAnnMouseUp(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            const pos = getMousePos(e);
+            
+            const w = pos.x - startX;
+            const h = pos.y - startY;
+            
+            // Validate size
+            if (Math.abs(w) > 10 && Math.abs(h) > 10) {
+                const box = {
+                    x: w < 0 ? pos.x : startX,
+                    y: h < 0 ? pos.y : startY,
+                    w: Math.abs(w),
+                    h: Math.abs(h),
+                    yoloId: parseInt(document.getElementById('ann-class-selector').value)
+                };
+                annData[annIndex].boxes.push(box);
+                activeBoxIndex = annData[annIndex].boxes.length - 1;
+            }
+            drawAnn();
+            renderBoxList();
+        }
+
+        window.updateActiveBoxClass = function() {
+            if (activeBoxIndex === -1) return;
+            annData[annIndex].boxes[activeBoxIndex].yoloId = parseInt(document.getElementById('ann-class-selector').value);
+            drawAnn();
+            renderBoxList();
+        }
+
+        function renderBoxList() {
+            const div = document.getElementById('box-list');
+            const boxes = annData[annIndex].boxes;
+            
+            div.innerHTML = boxes.map((box, i) => `
+                <div onclick="selectBox(${i})" class="cursor-pointer p-2 mb-1 rounded flex justify-between ${i === activeBoxIndex ? 'bg-indigo-900 border border-indigo-500' : 'bg-gray-800 hover:bg-gray-700'}">
+                    <span class="text-xs text-gray-300">
+                        ${CATEGORIES.find(c => c.yoloId == box.yoloId)?.name}
+                    </span>
+                    ${i === activeBoxIndex ? '<i class="fa-solid fa-check text-xs text-indigo-400"></i>' : ''}
+                </div>
+            `).join('');
+        }
+        
+        // Expose selectBox to global scope because innerHTML onclick can't see modules
+        window.selectBox = function(i) {
+            activeBoxIndex = i;
+            // Update dropdown
+            document.getElementById('ann-class-selector').value = annData[annIndex].boxes[i].yoloId;
+            drawAnn();
+            renderBoxList();
+        }
+
+        window.exportYOLO = async function() {
+            const btn = document.getElementById('export-yolo-btn');
+            btn.disabled = true;
+            btn.textContent = "Zipping...";
+            
+            const zip = new JSZip();
+            const imgDir = zip.folder("images");
+            const lblDir = zip.folder("labels");
+            
+            annData.forEach((item, idx) => {
+                // Image
+                const b64 = item.imageB64.split(',')[1];
+                const name = item.mlFileName || `img_${idx}`;
+                imgDir.file(`${name}.jpg`, b64, {base64: true});
+                
+                // Label
+                let txt = "";
+                const imgW = annCanvas.width; // Approximation if assuming all same size, ideally track per image
+                const imgH = annCanvas.height;
+                
+                (item.boxes || []).forEach(box => {
+                    const cx = (box.x + box.w/2) / imgW;
+                    const cy = (box.y + box.h/2) / imgH;
+                    const w = box.w / imgW;
+                    const h = box.h / imgH;
+                    txt += `${box.yoloId} ${cx.toFixed(6)} ${cy.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}\n`;
+                });
+                lblDir.file(`${name}.txt`, txt);
+            });
+            
+            // Classes.txt
+            const classesTxt = CATEGORIES.filter(c => c.yoloId >= 0)
+                                       .sort((a,b) => a.yoloId - b.yoloId)
+                                       .map(c => c.name)
+                                       .join('\n');
+            zip.file("classes.txt", classesTxt);
+            
+            const content = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "yolo_dataset.zip";
+            a.click();
+            
+            btn.disabled = false;
+            btn.textContent = "Export YOLO";
+        };
+    </script>
+</body>
 </html>
