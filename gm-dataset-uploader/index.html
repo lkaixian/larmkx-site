@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ML Workbench</title>
+    <title>ML Workbench (Malaysia Localized)</title>
     
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,6 +26,7 @@
         .card { background: #272742; }
         .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl transition shadow-lg; }
         .btn-secondary { @apply bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-xl transition shadow-lg; }
+        .btn-warning { @apply bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-xl transition shadow-lg; }
         
         /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
@@ -33,6 +34,13 @@
         ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
         
         canvas { cursor: crosshair; touch-action: none; }
+
+        /* Protocol Grid */
+        .proto-card { @apply bg-gray-800 p-3 rounded-lg border border-gray-700; }
+        .proto-title { @apply font-bold text-indigo-300 text-sm mb-1 uppercase; }
+        .proto-text { @apply text-xs text-gray-300 leading-relaxed; }
+        .badge-trash { @apply bg-red-900/50 text-red-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-800 uppercase; }
+        .badge-recycle { @apply bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-green-800 uppercase; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -40,8 +48,8 @@
     <!-- Navigation Bar -->
     <nav class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-4 z-50 shadow-md">
         <div class="flex items-center gap-2">
-            <i class="fa-solid fa-layer-group text-indigo-400 text-xl"></i>
-            <span class="font-bold text-lg hidden sm:inline">ML Workbench</span>
+            <i class="fa-solid fa-recycle text-green-400 text-xl"></i>
+            <span class="font-bold text-lg hidden sm:inline">MyRecycle ML</span>
         </div>
         
         <div class="flex gap-2">
@@ -64,6 +72,21 @@
     <!-- ================= VIEW 1: CAPTURE ================= -->
     <div id="view-capture" class="view-section active p-4">
         <div class="max-w-2xl mx-auto w-full">
+            
+            <!-- Protocol Alert Bar -->
+            <button onclick="toggleProtocols()" class="w-full bg-indigo-900/50 border border-indigo-500/50 p-3 rounded-xl mb-4 flex items-center justify-between hover:bg-indigo-900/70 transition group">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-500 p-2 rounded-lg text-white">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="font-bold text-indigo-200 text-sm">Data Collection Protocols</h3>
+                        <p class="text-xs text-indigo-300">Tap to read the standard rules before starting.</p>
+                    </div>
+                </div>
+                <i class="fa-solid fa-chevron-right text-indigo-400 group-hover:translate-x-1 transition"></i>
+            </button>
+
             <!-- Status & Queue -->
             <div class="flex justify-between items-center mb-4 bg-gray-800 p-3 rounded-xl">
                 <div id="capture-status" class="text-sm font-medium text-indigo-300">Camera Ready</div>
@@ -115,6 +138,87 @@
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="discardPhoto()" class="btn-secondary">Retake</button>
                     <button onclick="confirmUpload()" class="btn-primary">Save & Upload</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROTOCOLS MODAL -->
+        <div id="protocols-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4">
+            <div class="card max-w-2xl w-full p-6 rounded-2xl flex flex-col max-h-[90vh]">
+                <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">SOP & Rules</h2>
+                        <p class="text-xs text-gray-400">Standard Operating Procedures for Data Collection</p>
+                    </div>
+                    <button onclick="toggleProtocols()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark fa-xl"></i></button>
+                </div>
+                
+                <div class="overflow-y-auto pr-2 space-y-4">
+                    
+                    <!-- Section: Composites -->
+                    <div>
+                        <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-layer-group"></i> Composite Items</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Pringles Can</span> <span class="badge-trash">502 Trash</span></div>
+                                <p class="proto-text">If intact (Tube + Metal + Cap), label as Trash. Only label parts if separated.</p>
+                            </div>
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Cigarette Box</span> <span class="badge-trash">502 Trash</span></div>
+                                <p class="proto-text">If intact (Foil + Plastic + Box), label as Trash. Tear apart to label Cardboard (301).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Metals -->
+                    <div>
+                        <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-sheet-plastic"></i> Cans & Labels</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Tin Can + Label</span> <span class="badge-recycle">202 Metal</span></div>
+                                <p class="proto-text">If paper label is glued on, treat WHOLE object as Metal. Do not label paper separately.</p>
+                            </div>
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Aerosol Can</span> <span class="badge-recycle">202 Metal</span></div>
+                                <p class="proto-text">Empty spray cans go to Metal. Cap usually goes to Plastic (103).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Local Context -->
+                    <div>
+                        <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-location-dot"></i> Local Items (Malaysia)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Ikat Tepi</span> <span class="badge-trash">502 Trash</span></div>
+                                <p class="proto-text">Drink bags with string/straw are contamination. Do not label as soft plastic.</p>
+                            </div>
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Tetra Pak</span> <span class="badge-recycle">303 Carton</span></div>
+                                <p class="proto-text">Milo/Yeo's drink boxes are NOT cardboard. Use specific category 303.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Ambiguity -->
+                    <div>
+                        <h3 class="text-indigo-400 font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> Common Mistakes</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Dirty/Greasy</span> <span class="badge-trash">501 Dirty</span></div>
+                                <p class="proto-text">Pizza boxes with oil, or unwashed plastic containers with curry.</p>
+                            </div>
+                            <div class="proto-card">
+                                <div class="flex justify-between mb-1"><span class="proto-title">Receipts</span> <span class="badge-trash">502 Trash</span></div>
+                                <p class="proto-text">Thermal paper cannot be recycled. Do not label as Paper.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="mt-6 border-t border-gray-700 pt-4">
+                    <button onclick="toggleProtocols()" class="w-full btn-primary">I Understand</button>
                 </div>
             </div>
         </div>
@@ -217,10 +321,13 @@
     <!-- Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
         import { getFirestore, addDoc, updateDoc, doc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
         // --- CONFIGURATION ---
+        const appId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+        const initialAuthToken = typeof __initial_auth_token !== "undefined" ? __initial_auth_token : null;
+
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
             authDomain: "gm-dataset.firebaseapp.com",
@@ -231,23 +338,36 @@
             measurementId: "G-DKBMCVTD56",
         };
 
+        // --- UPDATED CATEGORY LIST (TRASHPEDIA ALIGNED) ---
         const CATEGORIES = [
             { id: '000', name: '--- Select ---', yoloId: -1, requiresSelection: true },
-            { id: '101', name: 'PET Plastic Bottle', yoloId: 0, tip: 'Clear Bottle' },
-            { id: '102', name: 'HDPE Container', yoloId: 1, tip: 'Milk Jug' },
-            { id: '103', name: 'Mixed Rigid Plastic', yoloId: 2, tip: 'Yogurt/Tray' },
-            { id: '104', name: 'Soft Plastic/LDPE/Film', yoloId: 3, tip: 'Grocery Bag/Food Wrapper' },
-            { id: '201', name: 'Aluminum Can', yoloId: 4, tip: 'Soda Can' },
-            { id: '202', name: 'Tin Can', yoloId: 5, tip: 'Food Can' },
-            { id: '301', name: 'Cardboard', yoloId: 6, tip: 'Box' },
-            { id: '302', name: 'Paper', yoloId: 7, tip: 'Mixed Paper' },
-            { id: '401', name: 'Clear Glass', yoloId: 8, tip: 'Wine/Jar' },
-            { id: '402', name: 'Colored Glass', yoloId: 9, tip: 'Beer Bottle' },
-            { id: '501', name: 'E-waste', yoloId: 10, tip: 'Charging Brick/Electric Kettle' },
-            { id: '502', name: 'Textile', yoloId: 11, tip: 'Clothes' },
-            { id: '601', name: 'Contaminated', yoloId: 12, tip: 'Dirty' },
-            { id: '602', name: 'Non-Recyclable', yoloId: 13, tip: 'Trash' }
-        ];
+            
+            // PLASTICS
+            { id: '101', name: 'PET Plastic Bottle', yoloId: 0, tip: 'Clear/Blue Tint (1)' },
+            { id: '102', name: 'HDPE Container', yoloId: 1, tip: 'Shampoo/Detergent (2)' },
+            { id: '103', name: 'Mixed Rigid Plastic', yoloId: 2, tip: 'Yogurt/Takeaway (5)' },
+            { id: '104', name: 'Soft Plastic / Film', yoloId: 3, tip: 'Clean Bags/Bubble Wrap' },
+
+            // METALS
+            { id: '201', name: 'Aluminum Can', yoloId: 4, tip: 'Soda Cans' },
+            { id: '202', name: 'Tin Can', yoloId: 5, tip: 'Food Cans/Biscuits' },
+
+            // PAPER / FIBER
+            { id: '301', name: 'Cardboard', yoloId: 6, tip: 'Delivery Boxes' },
+            { id: '302', name: 'Paper', yoloId: 7, tip: 'Office/Magazines/Newspaper' },
+            { id: '303', name: 'Tetra Pak / Carton', yoloId: 8, tip: 'Milo/Juice Boxes' }, 
+
+            // GLASS
+            { id: '401', name: 'Glass Bottle/Jar', yoloId: 9, tip: 'All Colors' },
+
+            // REJECTS
+            { id: '501', name: 'Contaminated / Dirty', yoloId: 10, tip: 'Food Residue/Oil' },
+            { id: '502', name: 'Non-Recyclable Trash', yoloId: 11, tip: 'Receipts/Straws/Tissues' }, 
+
+            // SPECIAL
+            { id: '601', name: 'E-Waste', yoloId: 12, tip: 'Cables/Batteries/Electronics' },
+            { id: '602', name: 'Textile', yoloId: 13, tip: 'Clothes/Undergarments/Lingeries' }
+        ]
 
         // --- GLOBAL STATE ---
         let app, db, auth, userId;
@@ -278,6 +398,11 @@
 
         async function initFirebase() {
             try {
+                if (Object.keys(FIREBASE_CONFIG).length === 0) {
+                    console.error("Firebase Config Missing!");
+                    return;
+                }
+
                 app = initializeApp(FIREBASE_CONFIG);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -290,9 +415,21 @@
                         loadRecentPhotos();
                     } else {
                         statusEl.innerHTML = `<i class="fa-solid fa-circle text-red-500"></i> Offline`;
-                        signInAnonymously(auth);
                     }
                 });
+
+                // Auth Logic with Fallback
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (err) {
+                    console.warn("Auth Fallback:", err);
+                    await signInAnonymously(auth);
+                }
+
             } catch (e) {
                 console.error("Firebase Init Error:", e);
                 alert("Firebase Error: " + e.message);
@@ -300,13 +437,11 @@
         }
 
         function populateDropdowns() {
-            // Capture Dropdown
             const capSel = document.getElementById('category-select');
-            // Annotator Dropdown
             const annSel = document.getElementById('ann-class-selector');
 
             CATEGORIES.forEach(cat => {
-                // Capture
+                // Capture Dropdown
                 let opt = document.createElement('option');
                 opt.value = cat.id;
                 opt.text = cat.tip ? `${cat.name} (${cat.tip})` : cat.name;
@@ -314,7 +449,7 @@
                 opt.selected = cat.requiresSelection;
                 capSel.add(opt);
 
-                // Annotator (skip placeholder)
+                // Annotator Dropdown (skip select & rejects if needed, but useful to keep)
                 if (cat.yoloId >= 0) {
                     let annOpt = document.createElement('option');
                     annOpt.value = cat.yoloId;
@@ -324,19 +459,22 @@
             });
         }
 
+        // --- PROTOCOL MODAL ---
+        window.toggleProtocols = function() {
+            const modal = document.getElementById('protocols-modal');
+            modal.classList.toggle('hidden');
+        }
+
         // --- NAVIGATION LOGIC ---
         window.switchTab = function(tabName) {
-            // Update State
             activeTab = tabName;
             
-            // UI Update
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.getElementById(`view-${tabName}`).classList.add('active');
             
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(`nav-${tabName}`).classList.add('active');
 
-            // Resource Management
             if (tabName === 'capture') {
                 startCamera();
             } else {
@@ -350,9 +488,10 @@
         
         async function startCamera() {
             const video = document.getElementById('video-stream');
-            if (videoStream) return; // Already running
+            if (videoStream) return; 
 
             try {
+                // Request 720p
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
@@ -387,9 +526,9 @@
             const video = document.getElementById('video-stream');
             const canvas = document.getElementById('capture-canvas');
             
-            // Match canvas to video resolution
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            // Match canvas to actual video resolution
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
             
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0);
@@ -435,7 +574,7 @@
             q.push(item);
             localStorage.setItem(`queue_${FIREBASE_CONFIG.projectId}`, JSON.stringify(q));
             updateQueueCount();
-            processUploadQueue(); // Try immediately
+            processUploadQueue(); 
         }
 
         function updateQueueCount() {
@@ -450,26 +589,23 @@
             
             if (q.length === 0) return;
 
-            const item = q[0]; // Process head
+            const item = q[0]; 
             
             try {
-                // Ensure appId is defined or use default
                 const currentAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
                 
                 await addDoc(collection(db, `artifacts/${currentAppId}/public/data/ml_photos`), {
                     ...item,
                     userId: userId,
-                    status: 'pending_ml',
+                    status: 'pending_ml', // Initial status
                     processed: false,
                     appId: currentAppId
                 });
 
-                // Success - remove from queue
                 q.shift();
                 localStorage.setItem(qName, JSON.stringify(q));
                 updateQueueCount();
                 
-                // Process next if exists
                 if (q.length > 0) window.processUploadQueue();
                 
             } catch (e) {
@@ -522,6 +658,7 @@
             status.textContent = "Querying Firestore...";
 
             try {
+                // Fetch ALL data, filtering can be done here if needed (e.g. only 'annotated')
                 const snapshot = await getDocs(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`));
                 const data = [];
                 snapshot.forEach(doc => data.push(doc.data()));
@@ -557,7 +694,6 @@
             annCanvas = document.getElementById('editor');
             annCtx = annCanvas.getContext('2d');
             
-            // Keyboard Shortcuts
             document.addEventListener('keydown', e => {
                 if (activeTab !== 'annotate') return;
                 
@@ -572,7 +708,6 @@
                 if (e.key.toLowerCase() === 's') prevImage();
             });
 
-            // Canvas Mouse Events
             annCanvas.addEventListener('mousedown', onAnnMouseDown);
             annCanvas.addEventListener('mousemove', onAnnMouseMove);
             annCanvas.addEventListener('mouseup', onAnnMouseUp);
@@ -587,7 +722,7 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...';
             
             try {
-                // Fetch all data and filter in memory to comply with simple query rule
+                // Fetch all and filter client-side for "pending_ml"
                 const snapshot = await getDocs(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`));
                 
                 const pending = [];
@@ -595,9 +730,9 @@
                     const data = doc.data();
                     if (data.status === 'pending_ml') {
                         pending.push({
-                            id: doc.id, // Store doc ID for updates
+                            id: doc.id, 
                             ...data,
-                            boxes: data.boxes || [] // Load existing boxes if any
+                            boxes: data.boxes || [] 
                         });
                     }
                 });
@@ -609,7 +744,6 @@
                     status.textContent = "No pending images found.";
                     document.getElementById('save-next-btn').disabled = true;
                     document.getElementById('export-yolo-btn').disabled = true;
-                    // Clear canvas logic if needed
                 } else {
                     status.textContent = `Loaded ${annData.length} pending images.`;
                     document.getElementById('save-next-btn').disabled = false;
@@ -638,30 +772,24 @@
             const docRef = doc(db, `artifacts/${targetAppId}/public/data/ml_photos`, currentItem.id);
 
             try {
-                // Update Firestore
+                // Mark as annotated in Firestore
                 await updateDoc(docRef, {
                     boxes: currentItem.boxes,
                     status: 'annotated',
                     processed: true
                 });
 
-                // Remove from local list and move next
+                // Remove from local list
                 annData.splice(annIndex, 1);
                 
-                // Update counter
                 document.getElementById('fetch-status').textContent = `${annData.length} remaining.`;
 
                 if (annData.length > 0) {
-                    // Check bounds if we deleted the last item
                     if (annIndex >= annData.length) annIndex = annData.length - 1;
                     loadAnnImage(annIndex);
                 } else {
-                    // No more images
                     alert("All images annotated!");
                     annCtx.clearRect(0, 0, annCanvas.width, annCanvas.height);
-                    document.getElementById('meta-filename').textContent = "--";
-                    document.getElementById('meta-category').textContent = "--";
-                    document.getElementById('ann-counter').textContent = "--/--";
                     btn.disabled = true;
                 }
 
@@ -684,7 +812,6 @@
             annIndex = idx;
             const item = annData[annIndex];
             
-            // Metadata Update
             document.getElementById('ann-counter').textContent = `${idx + 1}/${annData.length}`;
             document.getElementById('meta-filename').textContent = item.mlFileName || 'Unknown';
             document.getElementById('meta-category').textContent = item.categoryName || 'Unknown';
@@ -699,7 +826,7 @@
                 annCanvas.width = annImgObj.width;
                 annCanvas.height = annImgObj.height;
                 
-                // Fit canvas to screen visually
+                // Fit canvas visually
                 const wrapper = document.getElementById('canvas-wrapper');
                 const scale = Math.min(wrapper.clientWidth / annCanvas.width, wrapper.clientHeight / annCanvas.height);
                 annCanvas.style.width = (annCanvas.width * scale) + 'px';
@@ -718,7 +845,6 @@
             annCtx.clearRect(0, 0, annCanvas.width, annCanvas.height);
             annCtx.drawImage(annImgObj, 0, 0);
             
-            // Dim overlay
             annCtx.fillStyle = 'rgba(0,0,0,0.15)';
             annCtx.fillRect(0,0, annCanvas.width, annCanvas.height);
 
@@ -753,9 +879,8 @@
 
         function onAnnMouseDown(e) {
             const pos = getMousePos(e);
-            const boxes = annData[annIndex].boxes;
+            const boxes = annData[annIndex].boxes || [];
             
-            // Hit detection (reverse order)
             let hit = -1;
             for (let i = boxes.length - 1; i >= 0; i--) {
                 const b = boxes[i];
@@ -795,7 +920,6 @@
             const w = pos.x - startX;
             const h = pos.y - startY;
             
-            // Validate size
             if (Math.abs(w) > 10 && Math.abs(h) > 10) {
                 const box = {
                     x: w < 0 ? pos.x : startX,
@@ -804,6 +928,7 @@
                     h: Math.abs(h),
                     yoloId: parseInt(document.getElementById('ann-class-selector').value)
                 };
+                if (!annData[annIndex].boxes) annData[annIndex].boxes = [];
                 annData[annIndex].boxes.push(box);
                 activeBoxIndex = annData[annIndex].boxes.length - 1;
             }
@@ -820,7 +945,7 @@
 
         function renderBoxList() {
             const div = document.getElementById('box-list');
-            const boxes = annData[annIndex].boxes;
+            const boxes = annData[annIndex].boxes || [];
             
             div.innerHTML = boxes.map((box, i) => `
                 <div onclick="selectBox(${i})" class="cursor-pointer p-2 mb-1 rounded flex justify-between ${i === activeBoxIndex ? 'bg-indigo-900 border border-indigo-500' : 'bg-gray-800 hover:bg-gray-700'}">
@@ -832,10 +957,8 @@
             `).join('');
         }
         
-        // Expose selectBox to global scope because innerHTML onclick can't see modules
         window.selectBox = function(i) {
             activeBoxIndex = i;
-            // Update dropdown
             document.getElementById('ann-class-selector').value = annData[annIndex].boxes[i].yoloId;
             drawAnn();
             renderBoxList();
@@ -850,15 +973,15 @@
             const imgDir = zip.folder("images");
             const lblDir = zip.folder("labels");
             
+            // Export ALL currently loaded (pending) or annotated items?
+            // Usually exports what's in the list.
             annData.forEach((item, idx) => {
-                // Image
                 const b64 = item.imageB64.split(',')[1];
                 const name = item.mlFileName || `img_${idx}`;
                 imgDir.file(`${name}.jpg`, b64, {base64: true});
                 
-                // Label
                 let txt = "";
-                const imgW = annCanvas.width; // Approximation if assuming all same size, ideally track per image
+                const imgW = annCanvas.width;
                 const imgH = annCanvas.height;
                 
                 (item.boxes || []).forEach(box => {
@@ -871,7 +994,6 @@
                 lblDir.file(`${name}.txt`, txt);
             });
             
-            // Classes.txt
             const classesTxt = CATEGORIES.filter(c => c.yoloId >= 0)
                                        .sort((a,b) => a.yoloId - b.yoloId)
                                        .map(c => c.name)
@@ -891,4 +1013,3 @@
     </script>
 </body>
 </html>
-
