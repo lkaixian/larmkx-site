@@ -4,7 +4,7 @@
     <base href="/gm-dataset-collector/">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyRecycle Contributor</title>
+    <title>GreenMalaysia Contributor</title>
     
     <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -35,7 +35,7 @@
                 <i class="fa-solid fa-camera text-green-400"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg leading-tight">MyRecycle</h1>
+                <h1 class="font-bold text-lg leading-tight">GreenMalaysia</h1>
                 <p class="text-[10px] text-gray-400 uppercase tracking-wider">Contributor Mode</p>
             </div>
         </div>
@@ -182,21 +182,34 @@
         };
 
         // --- CATEGORIES (SYNCED WITH WORKBENCH) ---
-        const CATEGORIES = [
-            { id: '000', name: 'Select Item Type...', tip: '', requiresSelection: true },
-            { id: '101', name: 'PET Bottle (Clear/Tinted)', tip: 'Water/Soda bottles' },
-            { id: '102', name: 'HDPE Container (Opaque)', tip: 'Shampoo/Detergent' },
-            { id: '103', name: 'Mixed Rigid Plastic', tip: 'Yogurt/Takeaway tubs' },
-            { id: '104', name: 'Soft Plastic / Film', tip: 'Clean bags/wrap only' },
-            { id: '201', name: 'Aluminum Can', tip: 'Soda cans' },
-            { id: '202', name: 'Tin Can', tip: 'Food/Biscuit tins' },
-            { id: '301', name: 'Cardboard Box', tip: 'Delivery boxes' },
-            { id: '302', name: 'Paper', tip: 'Office/Magazines' },
-            { id: '303', name: 'Tetra Pak / Drink Box', tip: 'Milo/Yeos/Juice' },
-            { id: '401', name: 'Glass Bottle/Jar', tip: 'Any color' },
-            { id: '501', name: 'Dirty / Contaminated', tip: 'Food residue/Oil' },
-            { id: '502', name: 'General Trash', tip: 'Receipts/Straws/Ikat Tepi' },
-            { id: '601', name: 'E-Waste', tip: 'Cables/Batteries' }
+                const CATEGORIES = [
+            { id: '000', name: '--- Select ---', yoloId: -1, requiresSelection: true },
+            
+            // PLASTICS
+            { id: '101', name: 'PET Plastic Bottle', yoloId: 0, tip: 'Clear/Blue Tint (1)' },
+            { id: '102', name: 'HDPE Container', yoloId: 1, tip: 'Shampoo/Detergent (2)' },
+            { id: '103', name: 'Mixed Rigid Plastic', yoloId: 2, tip: 'Yogurt/Takeaway (5)' },
+            { id: '104', name: 'Soft Plastic / Film', yoloId: 3, tip: 'Clean Bags/Bubble Wrap' },
+
+            // METALS
+            { id: '201', name: 'Aluminum Can', yoloId: 4, tip: 'Soda Cans' },
+            { id: '202', name: 'Tin Can', yoloId: 5, tip: 'Food Cans/Biscuits' },
+
+            // PAPER / FIBER
+            { id: '301', name: 'Cardboard', yoloId: 6, tip: 'Delivery Boxes' },
+            { id: '302', name: 'Paper', yoloId: 7, tip: 'Office/Magazines/Newspaper' },
+            { id: '303', name: 'Tetra Pak / Carton', yoloId: 8, tip: 'Milo/Juice Boxes' }, 
+
+            // GLASS
+            { id: '401', name: 'Glass Bottle/Jar', yoloId: 9, tip: 'All Colors' },
+
+            // REJECTS
+            { id: '501', name: 'Contaminated / Dirty', yoloId: 10, tip: 'Food Residue/Oil' },
+            { id: '502', name: 'Non-Recyclable Trash', yoloId: 11, tip: 'Receipts/Straws/Tissues' }, 
+
+            // SPECIAL
+            { id: '601', name: 'E-Waste', yoloId: 12, tip: 'Cables/Batteries/Electronics' },
+            { id: '602', name: 'Textile', yoloId: 13, tip: 'Clothes/Undergarments/Lingeries' }
         ];
 
         let db, auth, userId;
