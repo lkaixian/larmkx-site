@@ -153,18 +153,24 @@
                     <div class="flex justify-between"><span>Delete Box</span> <kbd class="bg-gray-700 px-1 rounded">Del</kbd></div>
                 </div>
             </div>
+            
+            <!-- Cloud Fetch Button -->
             <div class="p-4 border-b border-gray-700">
-                <input type="file" id="json-input" accept=".json" class="hidden" onchange="loadAnnotationFile(this)">
-                <button onclick="document.getElementById('json-input').click()" class="w-full bg-gray-800 hover:bg-gray-700 py-2 rounded text-sm border border-gray-600 transition">
-                    <i class="fa-solid fa-folder-open mr-2"></i> Load JSON
+                <button id="fetch-pending-btn" onclick="fetchPendingImages()" class="w-full bg-indigo-700 hover:bg-indigo-600 py-2 rounded text-sm font-bold text-white transition shadow-lg mb-2">
+                    <i class="fa-solid fa-cloud-arrow-down mr-2"></i> Fetch Pending
                 </button>
+                <div id="fetch-status" class="text-center text-xs text-gray-500">No data loaded</div>
             </div>
+
+            <!-- Box List -->
             <div id="box-list" class="flex-1 overflow-y-auto p-2">
-                <p class="text-center text-gray-600 text-xs mt-4">Load dataset to start</p>
+                <p class="text-center text-gray-600 text-xs mt-4">Load pending images to start</p>
             </div>
+
+            <!-- Save & Next Button -->
             <div class="p-4 border-t border-gray-700">
-                <button onclick="exportYOLO()" id="export-yolo-btn" disabled class="w-full bg-green-700 hover:bg-green-600 text-white py-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-file-zipper mr-2"></i> Export YOLO
+                <button onclick="saveAndNext()" id="save-next-btn" disabled class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition transform hover:scale-105 active:scale-95">
+                    <i class="fa-solid fa-check mr-2"></i> Save & Next
                 </button>
             </div>
         </div>
@@ -199,6 +205,12 @@
             
             <label class="text-xs uppercase text-gray-500 font-bold mb-2 block">Active Box Label</label>
             <select id="ann-class-selector" onchange="updateActiveBoxClass()" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm outline-none focus:border-indigo-500"></select>
+            
+            <div class="mt-8">
+                <button onclick="exportYOLO()" id="export-yolo-btn" disabled class="w-full border border-gray-600 hover:bg-gray-800 text-gray-400 hover:text-white py-2 rounded text-xs transition">
+                    <i class="fa-solid fa-file-zipper mr-1"></i> Export Current Batch
+                </button>
+            </div>
         </div>
     </div>
 
@@ -206,7 +218,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        import { getFirestore, addDoc, updateDoc, doc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
         // --- CONFIGURATION ---
         const FIREBASE_CONFIG = {
@@ -563,21 +575,102 @@
             annCanvas.addEventListener('mouseup', onAnnMouseUp);
         }
 
-        window.loadAnnotationFile = function(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    // Init boxes if not present
-                    annData = json.map(item => ({ ...item, boxes: item.boxes || [] }));
-                    annIndex = 0;
+        window.fetchPendingImages = async function() {
+            const btn = document.getElementById('fetch-pending-btn');
+            const status = document.getElementById('fetch-status');
+            const targetAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...';
+            
+            try {
+                // Fetch all data and filter in memory to comply with simple query rule
+                const snapshot = await getDocs(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`));
+                
+                const pending = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.status === 'pending_ml') {
+                        pending.push({
+                            id: doc.id, // Store doc ID for updates
+                            ...data,
+                            boxes: data.boxes || [] // Load existing boxes if any
+                        });
+                    }
+                });
+
+                annData = pending;
+                annIndex = 0;
+
+                if (annData.length === 0) {
+                    status.textContent = "No pending images found.";
+                    document.getElementById('save-next-btn').disabled = true;
+                    document.getElementById('export-yolo-btn').disabled = true;
+                    // Clear canvas logic if needed
+                } else {
+                    status.textContent = `Loaded ${annData.length} pending images.`;
+                    document.getElementById('save-next-btn').disabled = false;
                     document.getElementById('export-yolo-btn').disabled = false;
                     loadAnnImage(0);
-                } catch(err) { alert("Invalid JSON"); }
-            };
-            reader.readAsText(file);
+                }
+
+            } catch (e) {
+                console.error(e);
+                status.textContent = "Error fetching data.";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down mr-2"></i> Fetch Pending';
+            }
+        };
+
+        window.saveAndNext = async function() {
+            if (annData.length === 0) return;
+            
+            const btn = document.getElementById('save-next-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Saving...';
+
+            const currentItem = annData[annIndex];
+            const targetAppId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+            const docRef = doc(db, `artifacts/${targetAppId}/public/data/ml_photos`, currentItem.id);
+
+            try {
+                // Update Firestore
+                await updateDoc(docRef, {
+                    boxes: currentItem.boxes,
+                    status: 'annotated',
+                    processed: true
+                });
+
+                // Remove from local list and move next
+                annData.splice(annIndex, 1);
+                
+                // Update counter
+                document.getElementById('fetch-status').textContent = `${annData.length} remaining.`;
+
+                if (annData.length > 0) {
+                    // Check bounds if we deleted the last item
+                    if (annIndex >= annData.length) annIndex = annData.length - 1;
+                    loadAnnImage(annIndex);
+                } else {
+                    // No more images
+                    alert("All images annotated!");
+                    annCtx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+                    document.getElementById('meta-filename').textContent = "--";
+                    document.getElementById('meta-category').textContent = "--";
+                    document.getElementById('ann-counter').textContent = "--/--";
+                    btn.disabled = true;
+                }
+
+            } catch (e) {
+                console.error("Save failed:", e);
+                alert("Failed to save annotation: " + e.message);
+            } finally {
+                if (annData.length > 0) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Save & Next';
+                }
+            }
         };
 
         function loadAnnImage(idx) {
