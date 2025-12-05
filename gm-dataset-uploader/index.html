@@ -17,9 +17,6 @@
       // 1. CONFIGURATION & GLOBALS
       // =========================================================
 
-      // --- MANDATORY: REPLACE WITH YOUR FIREBASE CONFIG ---
-      // If hosting on GitHub Pages, replace the placeholder below
-      // with the actual JSON object from your Firebase project settings.
       const appId =
         typeof __app_id !== "undefined" ? __app_id : "default-app-id";
       const initialAuthToken =
@@ -27,11 +24,8 @@
           ? __initial_auth_token
           : null;
 
-      const FIREBASE_CONFIG = JSON.parse(
-        typeof __firebase_config !== "undefined" ? __firebase_config : "{}"
-      );
-
-      const firebaseConfig = {
+      // FIXED: Assigned your actual keys to the correct variable name (FIREBASE_CONFIG)
+      const FIREBASE_CONFIG = {
         apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
         authDomain: "gm-dataset.firebaseapp.com",
         projectId: "gm-dataset",
@@ -300,6 +294,7 @@
 
       window.setupFirebase = async function () {
         try {
+          // Check checks the correct variable name now
           if (Object.keys(FIREBASE_CONFIG).length === 0) {
             window.showNotification(
               "Error: Firebase config is missing. Please replace the placeholder.",
@@ -330,9 +325,22 @@
             }
           });
 
-          if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
-          } else {
+          // Attempt authentication with fallback
+          // This handles the case where the environment token (initialAuthToken)
+          // doesn't match your custom project config.
+          try {
+            if (initialAuthToken) {
+              await signInWithCustomToken(auth, initialAuthToken);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch (authError) {
+            console.warn(
+              "Initial auth failed (likely project mismatch), falling back to anonymous auth:",
+              authError
+            );
+            // Fallback to anonymous auth if custom token fails
+            // NOTE: "Anonymous" provider must be enabled in Firebase Console
             await signInAnonymously(auth);
           }
 
@@ -340,7 +348,7 @@
         } catch (error) {
           console.error("Error setting up Firebase:", error);
           window.showNotification(
-            `Firebase setup failed: ${error.message}`,
+            `Firebase setup failed: ${error.message}. Ensure Anonymous Auth is enabled.`,
             "error"
           );
         }
