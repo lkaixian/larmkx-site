@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <base href="/gm-dataset-uploader/" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ML Data Collector</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script type="module">
+      // =========================================================
+      // 1. CONFIGURATION & GLOBALS
+      // =========================================================
+
+      // --- MANDATORY: REPLACE WITH YOUR FIREBASE CONFIG ---
+      // If hosting on GitHub Pages, replace the placeholder below
+      // with the actual JSON object from your Firebase project settings.
+      const appId =
+        typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+      const initialAuthToken =
+        typeof __initial_auth_token !== "undefined"
+          ? __initial_auth_token
+          : null;
+
+      const FIREBASE_CONFIG = JSON.parse(
+        typeof __firebase_config !== "undefined" ? __firebase_config : "{}"
+      );
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyAfIgH1JAA4IITwyChCOKjG6jO5p1XmIdg",
+        authDomain: "gm-dataset.firebaseapp.com",
+        projectId: "gm-dataset",
+        storageBucket: "gm-dataset.firebasestorage.app",
+        messagingSenderId: "738556449518",
+        appId: "1:738556449518:web:d1b1166756b59e7c2d99ff",
+        measurementId: "G-DKBMCVTD56",
+      };
+
+      let db;
+      let auth;
+      let userId = null;
+      let isAuthReady = false;
+      let videoStream = null;
+      let capturedImageData = null;
+
+      const LOCAL_QUEUE_KEY = `ml_photo_queue_${appId}`;
+      const UPLOAD_RETRY_INTERVAL = 5000; // Retry upload every 5 seconds
+
+      const CATEGORIES = [
+        { id: "000", name: "--- Select Category ---", requiresSelection: true },
+        {
+          id: "101",
+          name: "PET Plastic Bottle (Clear)",
+          shortTip: "Clear Drinks Bottle",
+        },
+        {
+          id: "102",
+          name: "HDPE Plastic Container",
+          shortTip: "Milk/Detergent Jug",
+        },
+        {
+          id: "103",
+          name: "Mixed Rigid Plastic",
+          shortTip: "Food Tray/Yogurt Cup",
+        },
+        {
+          id: "201",
+          name: "Aluminum Can (Beverage)",
+          shortTip: "Soft Drink Can",
+        },
+        {
+          id: "202",
+          name: "Ferrous Metal/Tin Can",
+          shortTip: "Steel Food Can",
+        },
+        { id: "301", name: "Cardboard (Clean/Dry)", shortTip: "Shipping Box" },
+        {
+          id: "302",
+          name: "Mixed Paper/Magazine",
+          shortTip: "Office Paper/Glossy",
+        },
+        {
+          id: "401",
+          name: "Clear Glass Bottle",
+          shortTip: "Transparent Wine/Oil",
+        },
+        {
+          id: "402",
+          name: "Colored Glass (Green/Brown)",
+          shortTip: "Beer Bottle",
+        },
+        {
+          id: "501",
+          name: "Contaminated Material",
+          shortTip: "Food/Oil Residue",
+        },
+        {
+          id: "502",
+          name: "Non-Recyclable Item",
+          shortTip: "Plastic Bag/Diaper",
+        },
+      ];
+
+      // Load Firebase SDKs - UPDATED TO v12.6.0
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+      import {
+        getAuth,
+        signInAnonymously,
+        signInWithCustomToken,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+      import {
+        getFirestore,
+        addDoc,
+        onSnapshot,
+        collection,
+        query,
+      } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+      // =========================================================
+      // 2. UTILITY FUNCTIONS
+      // =========================================================
+
+      /**
+       * Formats category name, date, and time into a clean filename.
+       * Format: CategoryName_YYYYMMDD_HHMMSS
+       */
+      function generateFileName(categoryName) {
+        const now = new Date();
+        const pad = (num) => num.toString().padStart(2, "0");
+
+        const year = now.getFullYear();
+        const month = pad(now.getMonth() + 1);
+        const day = pad(now.getDate());
+        const hour = pad(now.getHours());
+        const minute = pad(now.getMinutes());
+        const second = pad(now.getSeconds());
+
+        // Sanitize category name: remove spaces/special characters
+        const sanitizedCategoryName = categoryName
+          .replace(/\s+/g, "")
+          .replace(/[^a-zA-Z0-9]/g, "");
+
+        const datePart = `${year}${month}${day}`;
+        const timePart = `${hour}${minute}${second}`;
+
+        return `${sanitizedCategoryName}_${datePart}_${timePart}`;
+      }
+
+      /**
+       * Displays a notification with color-coded feedback.
+       */
+      window.showNotification = function (message, type = "info") {
+        const statusBox = document.getElementById("status-box");
+        statusBox.textContent = message;
+
+        statusBox.className =
+          "text-center font-semibold p-3 rounded-xl transition-colors duration-300";
+
+        const colors = {
+          success: "bg-green-600 text-white",
+          error: "bg-red-600 text-white",
+          warning: "bg-yellow-500 text-black",
+          info: "bg-indigo-400 text-white",
+        };
+
+        statusBox.className += ` ${colors[type] || colors.info}`;
+
+        clearTimeout(statusBox.timer);
+        statusBox.timer = setTimeout(() => {
+          statusBox.textContent =
+            "Live feed ready. Select a category and capture.";
+          statusBox.className =
+            "text-center font-semibold p-3 rounded-xl transition-colors duration-300 bg-gray-700 text-gray-300";
+        }, 5000);
+      };
+
+      // =========================================================
+      // 3. LOCAL QUEUE CORE LOGIC (Reliability)
+      // =========================================================
+
+      function loadQueue() {
+        try {
+          const queueJson = localStorage.getItem(LOCAL_QUEUE_KEY);
+          return queueJson ? JSON.parse(queueJson) : [];
+        } catch (e) {
+          console.error("Error loading queue from localStorage:", e);
+          return [];
+        }
+      }
+
+      function saveQueue(queue) {
+        try {
+          localStorage.setItem(LOCAL_QUEUE_KEY, JSON.stringify(queue));
+          updateQueueCount(queue.length);
+        } catch (e) {
+          console.error("Error saving queue to localStorage:", e);
+          window.showNotification(
+            "Local storage failed. Check device space.",
+            "error"
+          );
+        }
+      }
+
+      function updateQueueCount(count) {
+        document.getElementById("queue-count").textContent = count;
+      }
+
+      /**
+       * Adds a new photo object to the local queue in localStorage.
+       */
+      window.addToLocalQueue = function (photoData) {
+        const queue = loadQueue();
+        // Assign a unique local ID for tracking and removal
+        photoData.localId = Date.now() + "_" + Math.floor(Math.random() * 1000);
+        photoData.status = "pending_local";
+        queue.push(photoData);
+        saveQueue(queue);
+
+        // Attempt upload immediately after saving locally
+        processUploadQueue();
+
+        window.showNotification(
+          `Photo saved locally (${photoData.mlFileName}). Uploading soon...`,
+          "warning"
+        );
+      };
+
+      /**
+       * Attempts to upload items from the local queue to Firestore sequentially.
+       * This function is the heart of the reliability mechanism.
+       */
+      window.processUploadQueue = async function () {
+        // Must wait for Firebase auth to be ready
+        if (!isAuthReady || !userId || !db) return;
+
+        const queue = loadQueue();
+        if (queue.length === 0) {
+          return;
+        }
+
+        // Process only the first item to enforce sequential uploads and prevent throttling
+        const item = queue[0];
+
+        try {
+          window.showNotification(
+            `Attempting cloud upload for: ${item.mlFileName}`,
+            "info"
+          );
+
+          const collectionPath = `artifacts/${appId}/public/data/ml_photos`;
+
+          await addDoc(collection(db, collectionPath), {
+            userId: userId,
+            timestamp: item.timestamp,
+            mlFileName: item.mlFileName,
+            categoryId: item.categoryId,
+            categoryName: item.categoryName,
+            imageB64: item.imageB64,
+            status: "pending_ml",
+            processed: false,
+            appId: appId,
+          });
+
+          // Success: Remove item from local queue
+          const updatedQueue = queue.filter(
+            (qItem) => qItem.localId !== item.localId
+          );
+          saveQueue(updatedQueue);
+
+          window.showNotification(
+            `Cloud upload successful: ${item.mlFileName}!`,
+            "success"
+          );
+
+          // Process the next item immediately
+          if (updatedQueue.length > 0) {
+            processUploadQueue();
+          }
+        } catch (error) {
+          // Failure (Network error, etc.): Item remains in queue for retry by setInterval
+          console.error(`Upload failed for ${item.mlFileName}:`, error.message);
+          window.showNotification(
+            `Upload failed for ${item.mlFileName}. Retrying in ${
+              UPLOAD_RETRY_INTERVAL / 1000
+            }s.`,
+            "error"
+          );
+        }
+      };
+
+      // =========================================================
+      // 4. CORE APP FUNCTIONS (Camera, Capture, UI)
+      // =========================================================
+
+      window.setupFirebase = async function () {
+        try {
+          if (Object.keys(FIREBASE_CONFIG).length === 0) {
+            window.showNotification(
+              "Error: Firebase config is missing. Please replace the placeholder.",
+              "error"
+            );
+            return;
+          }
+
+          const app = initializeApp(FIREBASE_CONFIG);
+          db = getFirestore(app);
+          auth = getAuth(app);
+
+          onAuthStateChanged(auth, (user) => {
+            if (user) {
+              userId = user.uid;
+              document.getElementById(
+                "user-id-display"
+              ).textContent = `User ID: ${userId}`;
+              isAuthReady = true;
+              startCamera();
+              loadPhotos();
+              // Start the queue processing agent
+              setInterval(processUploadQueue, UPLOAD_RETRY_INTERVAL);
+              processUploadQueue(); // Initial run
+            } else {
+              userId = null;
+              isAuthReady = true;
+            }
+          });
+
+          if (initialAuthToken) {
+            await signInWithCustomToken(auth, initialAuthToken);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          populateCategories();
+        } catch (error) {
+          console.error("Error setting up Firebase:", error);
+          window.showNotification(
+            `Firebase setup failed: ${error.message}`,
+            "error"
+          );
+        }
+      };
+
+      function populateCategories() {
+        const select = document.getElementById("category-select");
+        CATEGORIES.forEach((cat) => {
+          const option = document.createElement("option");
+          option.value = cat.id;
+          // Display the name and the short tip for clarity
+          option.textContent = `${cat.name} (${cat.shortTip})`;
+          option.disabled = cat.requiresSelection || false;
+          option.selected = cat.requiresSelection || false;
+          select.appendChild(option);
+        });
+      }
+
+      async function startCamera() {
+        const video = document.getElementById("video-stream");
+        const captureBtn = document.getElementById("capture-btn");
+
+        if (videoStream) {
+          videoStream.getTracks().forEach((track) => track.stop());
+        }
+
+        try {
+          window.showNotification("Requesting camera access...", "info");
+          // Request back-facing camera for field data collection
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          videoStream = stream;
+          video.srcObject = stream;
+          video.play();
+          window.showNotification(
+            "Live feed ready. Select a category and capture.",
+            "success"
+          );
+          captureBtn.disabled = false;
+        } catch (err) {
+          console.error("Error accessing camera:", err);
+          window.showNotification(
+            "Camera access denied or failed. Please check permissions.",
+            "error"
+          );
+          captureBtn.disabled = true;
+        }
+      }
+
+      /**
+       * Initiates the photo capture and shows the review modal.
+       */
+      window.takePhoto = function () {
+        const video = document.getElementById("video-stream");
+        const canvas = document.getElementById("photo-canvas");
+        const categorySelect = document.getElementById("category-select");
+
+        const selectedCategoryId = categorySelect.value;
+        // Get the full text including the tip for display
+        const selectedCategoryText =
+          categorySelect.options[categorySelect.selectedIndex].textContent;
+
+        // Extract just the category name for filename generation
+        const selectedCategoryName = selectedCategoryText.split("(")[0].trim();
+
+        if (selectedCategoryId === "000") {
+          window.showNotification(
+            "Please select a valid ML category before capturing.",
+            "warning"
+          );
+          categorySelect.focus();
+          return;
+        }
+
+        if (!videoStream) {
+          console.error("Camera stream not available.");
+          return;
+        }
+
+        // Capture the image data from the video frame
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        capturedImageData = canvas.toDataURL("image/jpeg", 0.9); // Use 90% quality
+
+        // Prepare photo metadata for the review modal
+        const fileName = generateFileName(selectedCategoryName);
+
+        document.getElementById("review-img").src = capturedImageData;
+        document.getElementById("review-category-name").textContent =
+          selectedCategoryText;
+        document.getElementById("review-filename").textContent = fileName;
+
+        document.getElementById("review-modal").classList.remove("hidden");
+      };
+
+      /**
+       * Dismisses the review modal and prepares for retake.
+       */
+      window.retakePhoto = function () {
+        document.getElementById("review-modal").classList.add("hidden");
+        capturedImageData = null;
+        window.showNotification("Review dismissed. Ready for retake.", "info");
+      };
+
+      /**
+       * Confirms the image quality and adds the data to the local queue.
+       */
+      window.uploadConfirmed = function () {
+        if (!capturedImageData) {
+          window.showNotification("No photo data to upload.", "error");
+          retakePhoto();
+          return;
+        }
+
+        const categorySelect = document.getElementById("category-select");
+
+        // Package the data for local storage
+        const photoData = {
+          timestamp: Date.now(),
+          mlFileName: document.getElementById("review-filename").textContent,
+          categoryId: categorySelect.value,
+          categoryName: document.getElementById("review-category-name")
+            .textContent,
+          imageB64: capturedImageData,
+        };
+
+        // Add to local storage immediately for persistence
+        window.addToLocalQueue(photoData);
+
+        capturedImageData = null;
+        document.getElementById("review-modal").classList.add("hidden");
+      };
+
+      /**
+       * Listens to Firestore for successful uploads and updates the Recent Uploads list.
+       */
+      function loadPhotos() {
+        if (!isAuthReady || !userId || !db) return;
+
+        const photosList = document.getElementById("photos-list");
+        const collectionPath = `artifacts/${appId}/public/data/ml_photos`;
+
+        const q = collection(db, collectionPath);
+
+        onSnapshot(
+          q,
+          (snapshot) => {
+            let photos = [];
+            snapshot.forEach((doc) => {
+              photos.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Sort in memory by timestamp descending (newest first)
+            photos.sort((a, b) => b.timestamp - a.timestamp);
+
+            photosList.innerHTML = "";
+
+            if (photos.length === 0) {
+              photosList.innerHTML =
+                '<p class="text-gray-500 text-center py-4">No photos uploaded to the cloud yet.</p>';
+              return;
+            }
+
+            photos.slice(0, 5).forEach((photo) => {
+              const time = new Date(photo.timestamp).toLocaleTimeString();
+              const date = new Date(photo.timestamp).toLocaleDateString();
+
+              const item = document.createElement("div");
+              item.className =
+                "p-3 bg-white/5 border border-white/10 rounded-xl shadow-lg flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4";
+
+              const img = document.createElement("img");
+              img.src = photo.imageB64;
+              img.className =
+                "w-16 h-16 object-cover rounded-md border border-gray-600 flex-shrink-0";
+              img.alt = photo.mlFileName || `Uploaded photo at ${time}`;
+
+              const details = document.createElement("div");
+              details.className = "flex flex-col flex-grow min-w-0";
+              details.innerHTML = `
+                        <p class="font-semibold text-indigo-300 truncate">${
+                          photo.mlFileName || "Unknown Filename"
+                        }</p>
+                        <p class="text-xs text-gray-400">Category: ${
+                          photo.categoryName || "N/A"
+                        }</p>
+                        <p class="text-xs text-gray-500">Time: ${date} ${time}</p>
+                        <p class="text-sm">Status: <span class="text-green-400 font-medium">Cloud Uploaded</span></p>
+                    `;
+
+              item.appendChild(img);
+              item.appendChild(details);
+              photosList.appendChild(item);
+            });
+          },
+          (error) => {
+            console.error("Error listening to photos:", error);
+            window.showNotification(
+              `Error loading cloud data: ${error.message}`,
+              "error"
+            );
+          }
+        );
+      }
+
+      // =========================================================
+      // 5. INITIALIZATION
+      // =========================================================
+
+      window.onload = function () {
+        setupFirebase();
+        updateQueueCount(loadQueue().length); // Show queue count on load
+      };
+    </script>
+    <style>
+      /* Base styles for a dark, professional, mobile-friendly design */
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #1a1a2e;
+        color: #e4e6f0;
+      }
+      #video-stream {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        background-color: #000;
+      }
+      #photo-canvas {
+        display: none;
+      }
+      .container {
+        max-width: 600px;
+      }
+      .card {
+        background: #272742;
+      }
+
+      /* --- FIXED STYLES: Replaced @apply with standard CSS properties --- */
+
+      .btn-primary {
+        /* Matches @apply bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg */
+        background-color: #4f46e5; /* indigo-600 */
+        color: white;
+        font-weight: bold;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        transition: background-color 0.15s ease-in-out;
+        font-size: 1rem;
+      }
+      .btn-primary:hover {
+        background-color: #4338ca; /* indigo-700 */
+      }
+      .btn-primary:active {
+        background-color: #3730a3; /* indigo-800 */
+      }
+
+      .btn-secondary {
+        /* Matches @apply bg-gray-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg */
+        background-color: #6b7280; /* gray-500 */
+        color: white;
+        font-weight: bold;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        transition: background-color 0.15s ease-in-out;
+        font-size: 1rem;
+      }
+      .btn-secondary:hover {
+        background-color: #4b5563; /* gray-600 */
+      }
+      .btn-secondary:active {
+        background-color: #374151; /* gray-700 */
+      }
+
+      .select-input {
+        /* Matches @apply w-full p-3 mb-4 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-indigo-500 focus:border-indigo-500 */
+        width: 100%;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        background-color: #374151; /* gray-700 */
+        border: 1px solid #4b5563; /* border-gray-600 */
+        color: white;
+      }
+      /* --- END FIXED STYLES --- */
+
+      /* Modal Overlay Styles (Full screen for clear review) */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.95);
+        z-index: 50;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        width: 95%;
+        max-width: 500px;
+        max-height: 95vh;
+        background: #272742;
+        padding: 1rem;
+        border-radius: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .modal-image {
+        width: 100%;
+        height: auto;
+        max-height: 60vh;
+        object-fit: contain;
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body class="p-4 sm:p-6">
+    <div class="container mx-auto">
+      <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-400">
+        ML Data Collector
+      </h1>
+
+      <!-- Status & Notification Box -->
+      <div
+        id="status-box"
+        class="text-center font-semibold p-3 rounded-xl mb-4 bg-gray-700 text-gray-300"
+      >
+        Initializing app...
+      </div>
+
+      <!-- User ID & Queue Count Display -->
+      <div
+        class="card p-4 rounded-xl mb-6 shadow-2xl flex justify-between items-center"
+      >
+        <p
+          id="user-id-display"
+          class="text-xs text-gray-400 truncate flex-grow"
+        >
+          User ID: Loading...
+        </p>
+        <p class="text-sm font-bold ml-4 text-yellow-300">
+          Local Queue: <span id="queue-count" class="text-lg">0</span>
+        </p>
+      </div>
+
+      <!-- Camera, Category & Capture Section -->
+      <div id="capture-section" class="card p-4 rounded-xl mb-6 shadow-2xl">
+        <h2 class="text-xl font-semibold mb-3">Capture Setup</h2>
+
+        <!-- Category Selection Dropdown -->
+        <label
+          for="category-select"
+          class="block text-sm font-medium mb-1 text-gray-300"
+          >ML Category:</label
+        >
+        <select id="category-select" class="select-input"></select>
+
+        <h2 class="text-xl font-semibold mt-4 mb-3">Live Camera Feed</h2>
+
+        <!-- Video Stream Element -->
+        <div
+          class="w-full rounded-lg overflow-hidden border-4 border-indigo-500/50 mb-4 shadow-inner"
+        >
+          <video id="video-stream" autoplay playsinline muted></video>
+        </div>
+
+        <!-- Hidden Canvas for Photo Conversion -->
+        <canvas id="photo-canvas"></canvas>
+
+        <!-- Action Button - Large touch target -->
+        <button
+          id="capture-btn"
+          onclick="takePhoto()"
+          disabled
+          class="btn-primary w-full text-lg"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 inline-block mr-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.218A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.218a2 2 0 001.664.89H21a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          Capture Photo for Review
+        </button>
+      </div>
+
+      <!-- Upload History Section (Cloud Data) -->
+      <div class="card p-4 rounded-xl shadow-2xl">
+        <h2 class="text-xl font-semibold mb-4 text-indigo-300">
+          Recent Cloud Uploads
+        </h2>
+        <div id="photos-list" class="space-y-3">
+          <p class="text-gray-500 text-center py-4">
+            Loading data from cloud...
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo Review Modal (Hidden by default, used for confirmation) -->
+    <div id="review-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3 class="text-2xl font-bold mb-3 text-indigo-300 text-center">
+          Review Captured Photo
+        </h3>
+
+        <!-- Image Preview - Large and clear for validation -->
+        <img
+          id="review-img"
+          class="modal-image"
+          src=""
+          alt="Captured Photo Preview"
+        />
+
+        <!-- Metadata Confirmation -->
+        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+          <p class="text-sm text-gray-400">
+            Category:
+            <span
+              id="review-category-name"
+              class="text-white font-medium"
+            ></span>
+          </p>
+          <p class="text-sm text-gray-400">
+            Filename:
+            <span
+              id="review-filename"
+              class="text-yellow-300 font-mono text-xs break-words"
+            ></span>
+          </p>
+        </div>
+
+        <!-- Action Buttons - Large touch targets -->
+        <div class="flex flex-col space-y-3">
+          <button onclick="uploadConfirmed()" class="btn-primary">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 inline-block mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Confirm & Save Locally
+          </button>
+          <button onclick="retakePhoto()" class="btn-secondary">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 inline-block mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Retake Photo
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
