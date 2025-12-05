@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <base href="/gm-dataset-collector/">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GreenMalaysia Contributor</title>
@@ -16,7 +15,7 @@
         
         .card { background: #272742; }
         .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg w-full flex justify-center items-center gap-2; }
-        .btn-secondary { @apply bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg w-full; }
+        .btn-secondary { @apply bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg w-full flex justify-center items-center gap-2; }
         
         /* Protocol Grid */
         .proto-card { @apply bg-gray-800 p-3 rounded-lg border border-gray-700; }
@@ -60,16 +59,17 @@
             </div>
 
             <!-- Category Selector -->
-            <div class="card p-4 rounded-xl shadow-lg border border-gray-700">
+            <div class="card p-4 rounded-xl shadow-lg border border-gray-700 transition duration-300" id="cat-card">
                 <label class="text-xs uppercase font-bold text-gray-500 mb-2 block ml-1">1. What is the object?</label>
                 <select id="category-select" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"></select>
             </div>
 
-            <!-- Camera View -->
+            <!-- Action Area -->
             <div class="card p-4 rounded-xl shadow-lg border border-gray-700 relative">
-                <label class="text-xs uppercase font-bold text-gray-500 mb-2 block ml-1">2. Capture Photo</label>
+                <label class="text-xs uppercase font-bold text-gray-500 mb-2 block ml-1">2. Add Photos</label>
                 
-                <div class="relative w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-600 bg-black aspect-[4/3] mb-4 group">
+                <!-- Live Camera View -->
+                <div id="camera-container" class="relative w-full rounded-lg overflow-hidden border-2 border-dashed border-gray-600 bg-black aspect-[4/3] mb-4 group">
                     <video id="video-stream" autoplay playsinline muted class="w-full h-full object-cover"></video>
                     
                     <!-- Overlay Guide -->
@@ -81,21 +81,47 @@
                 </div>
 
                 <canvas id="capture-canvas" class="hidden"></canvas>
+                <canvas id="resize-canvas" class="hidden"></canvas>
 
-                <button onclick="takePhoto()" id="capture-btn" class="btn-primary text-lg">
-                    <i class="fa-solid fa-camera"></i> Snap Photo
-                </button>
+                <!-- Hidden File Input -->
+                <input type="file" id="file-input" accept="image/*" multiple class="hidden" onchange="handleBulkUpload(this)">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="takePhoto()" id="capture-btn" class="btn-primary text-lg">
+                        <i class="fa-solid fa-camera"></i> Snap
+                    </button>
+                    <button onclick="triggerFileUpload()" class="btn-secondary text-lg">
+                        <i class="fa-solid fa-images"></i> Upload Gallery
+                    </button>
+                </div>
             </div>
 
             <!-- Queue Status -->
-            <div class="text-center text-xs text-gray-500">
-                <span id="queue-status">Everything uploaded</span> <i class="fa-solid fa-check text-green-500 ml-1"></i>
+            <div class="text-center text-xs text-gray-500 bg-gray-800/50 p-2 rounded-lg">
+                <span id="queue-status">Queue empty</span> 
             </div>
 
         </div>
     </main>
 
-    <!-- Review Modal -->
+    <!-- Error Modal (Category Not Selected) -->
+    <div id="error-modal" class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card max-w-xs w-full p-6 rounded-2xl text-center border border-red-500/50 shadow-2xl">
+            <div class="mb-4 bg-red-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                <i class="fa-solid fa-exclamation text-3xl text-red-500"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Wait!</h3>
+            <p class="text-gray-300 text-sm mb-6 leading-relaxed">
+                We don't know what this item is yet. <br>
+                Please <b>select a category</b> from the dropdown list first.
+            </p>
+            <button onclick="closeErrorModal()" class="btn-primary bg-indigo-600 hover:bg-indigo-500 w-full border border-indigo-400">
+                OK, I'll select one
+            </button>
+        </div>
+    </div>
+
+    <!-- Review Modal (For Camera Only) -->
     <div id="capture-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="card max-w-sm w-full p-5 rounded-2xl border border-gray-600 shadow-2xl flex flex-col max-h-[90vh]">
             <h3 class="text-center font-bold text-xl mb-4 text-white">Looks good?</h3>
@@ -113,10 +139,21 @@
                 <button onclick="discardPhoto()" class="btn-secondary">
                     <i class="fa-solid fa-rotate-left mr-2"></i> Retake
                 </button>
-                <button onclick="confirmUpload()" class="btn-primary bg-green-600 hover:bg-green-500">
+                <button onclick="confirmCameraUpload()" class="btn-primary bg-green-600 hover:bg-green-500">
                     <i class="fa-solid fa-paper-plane mr-2"></i> Upload
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Processing Modal (For Bulk Upload) -->
+    <div id="processing-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="card max-w-xs w-full p-6 rounded-2xl text-center">
+            <div class="mb-4">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-500"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Processing Photos...</h3>
+            <p class="text-gray-400 text-sm" id="processing-text">Preparing files...</p>
         </div>
     </div>
 
@@ -182,34 +219,22 @@
         };
 
         // --- CATEGORIES (SYNCED WITH WORKBENCH) ---
-                const CATEGORIES = [
-            { id: '000', name: '--- Select ---', yoloId: -1, requiresSelection: true },
-            
-            // PLASTICS
-            { id: '101', name: 'PET Plastic Bottle', yoloId: 0, tip: 'Clear/Blue Tint (1)' },
-            { id: '102', name: 'HDPE Container', yoloId: 1, tip: 'Shampoo/Detergent (2)' },
-            { id: '103', name: 'Mixed Rigid Plastic', yoloId: 2, tip: 'Yogurt/Takeaway (5)' },
-            { id: '104', name: 'Soft Plastic / Film', yoloId: 3, tip: 'Clean Bags/Bubble Wrap' },
-
-            // METALS
-            { id: '201', name: 'Aluminum Can', yoloId: 4, tip: 'Soda Cans' },
-            { id: '202', name: 'Tin Can', yoloId: 5, tip: 'Food Cans/Biscuits' },
-
-            // PAPER / FIBER
-            { id: '301', name: 'Cardboard', yoloId: 6, tip: 'Delivery Boxes' },
-            { id: '302', name: 'Paper', yoloId: 7, tip: 'Office/Magazines/Newspaper' },
-            { id: '303', name: 'Tetra Pak / Carton', yoloId: 8, tip: 'Milo/Juice Boxes' }, 
-
-            // GLASS
-            { id: '401', name: 'Glass Bottle/Jar', yoloId: 9, tip: 'All Colors' },
-
-            // REJECTS
-            { id: '501', name: 'Contaminated / Dirty', yoloId: 10, tip: 'Food Residue/Oil' },
-            { id: '502', name: 'Non-Recyclable Trash', yoloId: 11, tip: 'Receipts/Straws/Tissues' }, 
-
-            // SPECIAL
-            { id: '601', name: 'E-Waste', yoloId: 12, tip: 'Cables/Batteries/Electronics' },
-            { id: '602', name: 'Textile', yoloId: 13, tip: 'Clothes/Undergarments/Lingeries' }
+        const CATEGORIES = [
+            { id: '000', name: 'Select Item Type...', tip: '', requiresSelection: true },
+            { id: '101', name: 'PET Bottle (Clear/Tinted)', tip: 'Water/Soda bottles' },
+            { id: '102', name: 'HDPE Container (Opaque)', tip: 'Shampoo/Detergent' },
+            { id: '103', name: 'Mixed Rigid Plastic', tip: 'Yogurt/Takeaway tubs' },
+            { id: '104', name: 'Soft Plastic / Film', tip: 'Clean bags/wrap only' },
+            { id: '201', name: 'Aluminum Can', tip: 'Soda cans' },
+            { id: '202', name: 'Tin Can', tip: 'Food/Biscuit tins' },
+            { id: '301', name: 'Cardboard Box', tip: 'Delivery boxes' },
+            { id: '302', name: 'Paper', tip: 'Office/Magazines' },
+            { id: '303', name: 'Tetra Pak / Drink Box', tip: 'Milo/Yeos/Juice' },
+            { id: '401', name: 'Glass Bottle/Jar', tip: 'Any color' },
+            { id: '501', name: 'Dirty / Contaminated', tip: 'Food residue/Oil' },
+            { id: '502', name: 'General Trash', tip: 'Receipts/Straws/Ikat Tepi' },
+            { id: '601', name: 'E-Waste', tip: 'Cables/Batteries' },
+            { id: '602', name: 'Textile', tip: 'Clothes/Undergarments' }
         ];
 
         let db, auth, userId;
@@ -221,6 +246,7 @@
             initFirebase();
             populateDropdown();
             startCamera();
+            updateQueueStatus();
             
             // Queue Processor Interval
             setInterval(processQueue, 3000);
@@ -250,7 +276,7 @@
             CATEGORIES.forEach(cat => {
                 let opt = document.createElement('option');
                 opt.value = cat.id;
-                opt.text = cat.tip ? `${cat.name}` : cat.name; // Simpler text for mobile
+                opt.text = cat.tip ? `${cat.name}` : cat.name;
                 if(cat.tip) opt.setAttribute('data-tip', cat.tip);
                 opt.disabled = cat.requiresSelection;
                 opt.selected = cat.requiresSelection;
@@ -261,7 +287,6 @@
         // --- CAMERA LOGIC ---
         async function startCamera() {
             try {
-                // Request HD
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
                 });
@@ -274,32 +299,24 @@
                 console.error(e);
                 document.getElementById('cam-status').textContent = "Camera Error";
                 document.getElementById('cam-status').className = "absolute bottom-2 left-2 bg-red-500/80 px-2 py-1 rounded text-xs text-white font-bold";
-                alert("Please allow camera access to contribute.");
+                // alert("Please allow camera access.");
             }
         }
 
         window.takePhoto = function() {
-            const select = document.getElementById('category-select');
-            if (select.value === '000') {
-                // Shake animation or alert
-                select.classList.add('ring-2', 'ring-red-500');
-                setTimeout(() => select.classList.remove('ring-2', 'ring-red-500'), 500);
-                alert("Please select what object this is first.");
-                return;
-            }
+            if (!validateCategory()) return;
 
             const video = document.getElementById('video-stream');
             const canvas = document.getElementById('capture-canvas');
             
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0);
             
             capturedBlob = canvas.toDataURL('image/jpeg', 0.9);
             
-            // Show Review
+            const select = document.getElementById('category-select');
             const catName = select.options[select.selectedIndex].text;
             document.getElementById('review-img').src = capturedBlob;
             document.getElementById('review-category').textContent = catName;
@@ -311,69 +328,158 @@
             capturedBlob = null;
         };
 
-        window.confirmUpload = function() {
+        window.confirmCameraUpload = function() {
             const select = document.getElementById('category-select');
             const catName = select.options[select.selectedIndex].text;
             
-            // Safe filename generation
+            addToQueue({
+                categoryId: select.value,
+                categoryName: catName,
+                imageB64: capturedBlob
+            });
+            
+            discardPhoto();
+        };
+
+        // --- BULK UPLOAD LOGIC ---
+        window.triggerFileUpload = function() {
+            if (!validateCategory()) return;
+            document.getElementById('file-input').click();
+        }
+
+        window.handleBulkUpload = async function(input) {
+            const files = input.files;
+            if (files.length === 0) return;
+
+            const select = document.getElementById('category-select');
+            const catName = select.options[select.selectedIndex].text;
+            const catId = select.value;
+
+            document.getElementById('processing-modal').classList.remove('hidden');
+            
+            for (let i = 0; i < files.length; i++) {
+                document.getElementById('processing-text').textContent = `Processing image ${i+1} of ${files.length}...`;
+                try {
+                    const resizedB64 = await resizeImage(files[i]);
+                    addToQueue({
+                        categoryId: catId,
+                        categoryName: catName,
+                        imageB64: resizedB64
+                    });
+                } catch (e) {
+                    console.error("Failed to process file", files[i].name, e);
+                }
+            }
+
+            document.getElementById('processing-modal').classList.add('hidden');
+            input.value = ''; // Reset input
+            alert(`Added ${files.length} photos to the upload queue!`);
+        }
+
+        function resizeImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.getElementById('resize-canvas');
+                        // Target HD resolution approx
+                        const targetWidth = 1280;
+                        const scale = targetWidth / img.width;
+                        
+                        canvas.width = targetWidth;
+                        canvas.height = img.height * scale;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        resolve(canvas.toDataURL('image/jpeg', 0.9));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- COMMON LOGIC ---
+        function validateCategory() {
+            const select = document.getElementById('category-select');
+            const card = document.getElementById('cat-card');
+            
+            if (select.value === '000') {
+                // Highlight the category card
+                card.classList.add('ring-2', 'ring-red-500', 'bg-red-900/20');
+                
+                // Show Custom Error Modal
+                document.getElementById('error-modal').classList.remove('hidden');
+                
+                return false;
+            }
+            // Remove highlight if valid
+            card.classList.remove('ring-2', 'ring-red-500', 'bg-red-900/20');
+            return true;
+        }
+
+        window.closeErrorModal = function() {
+            document.getElementById('error-modal').classList.add('hidden');
+            document.getElementById('category-select').focus();
+        }
+
+        function addToQueue(data) {
+            // Generate filename based on category & timestamp
             const d = new Date();
             const ts = d.toISOString().replace(/[-:T.]/g, '').slice(0, 14);
-            const safeCat = catName.split('(')[0].trim().replace(/[^a-zA-Z0-9]/g, '');
-            const fileName = `${safeCat}_${ts}`;
+            const random = Math.floor(Math.random() * 1000);
+            const safeCat = data.categoryName.split('(')[0].trim().replace(/[^a-zA-Z0-9]/g, '');
+            const fileName = `${safeCat}_${ts}_${random}`;
 
             const payload = {
                 mlFileName: fileName,
-                categoryId: select.value,
-                categoryName: catName,
-                imageB64: capturedBlob,
+                categoryId: data.categoryId,
+                categoryName: data.categoryName,
+                imageB64: data.imageB64,
                 timestamp: Date.now(),
-                status: 'pending_local', // Local Queue Status
+                status: 'pending_local',
                 localId: Date.now() + Math.random().toString()
             };
 
-            // Add to Local Storage Queue
             const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
             q.push(payload);
             localStorage.setItem('guest_queue', JSON.stringify(q));
-            
-            // Reset UI
-            discardPhoto();
             updateQueueStatus();
-            
-            // Trigger upload attempt
-            processQueue();
-        };
+            processQueue(); // Start uploading immediately
+        }
 
-        // --- QUEUE & UPLOAD LOGIC ---
         function updateQueueStatus() {
             const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
             const el = document.getElementById('queue-status');
             if (q.length === 0) {
-                el.innerHTML = 'All synced <i class="fa-solid fa-check text-green-500 ml-1"></i>';
+                el.innerHTML = 'All photos synced <i class="fa-solid fa-check text-green-500 ml-1"></i>';
             } else {
                 el.innerHTML = `Uploading ${q.length} photos... <i class="fa-solid fa-spinner fa-spin text-indigo-400 ml-1"></i>`;
             }
         }
 
         window.processQueue = async function() {
-            if (!userId) return; // Wait for auth
+            if (!userId) return; 
             
             const q = JSON.parse(localStorage.getItem('guest_queue') || '[]');
             if (q.length === 0) return;
 
-            const item = q[0]; // Take first item
+            const item = q[0]; 
 
             try {
                 // Hardcoded App ID for guests ensures it goes to YOUR dashboard
-                // You must ensure this matches the ID you use in the main workbench
                 const targetAppId = "default-app-id"; 
                 
                 await addDoc(collection(db, `artifacts/${targetAppId}/public/data/ml_photos`), {
                     ...item,
                     userId: userId,
-                    status: 'pending_ml', // Your workbench will see this
+                    status: 'pending_ml', 
                     processed: false,
-                    contributor: 'guest', // Flag to know it came from this app
+                    contributor: 'guest',
                     appId: targetAppId
                 });
 
@@ -382,16 +488,14 @@
                 localStorage.setItem('guest_queue', JSON.stringify(q));
                 updateQueueStatus();
                 
-                // Immediately try next if exists
+                // Immediately try next
                 if(q.length > 0) processQueue();
 
             } catch (e) {
                 console.error("Upload error", e);
-                // Keep in queue to retry later
             }
         }
 
-        // --- MODALS ---
         window.toggleProtocols = function() {
             document.getElementById('protocols-modal').classList.toggle('hidden');
         }
